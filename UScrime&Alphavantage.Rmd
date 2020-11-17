@@ -1,0 +1,92 @@
+---
+title: "Data Management API HW"
+author: ""
+date: "10/23/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+#Import Package
+library(jsonlite)
+library(tidyverse)
+library(data.table)
+```
+
+# Homework 1
+
+## Write function to pull first dataset from the API
+
+```{r}
+cdeArrest = function(offense, variable, start, end, 
+                     api_key = "9rfkv4GTRHYsXXOaZq8UYM1YJeW2Y3P9C0NrCSdt"){
+  URL = paste("https://api.usa.gov/crime/fbi/sapi/api/data/arrest/national/")
+  PATH = paste(URL, offense , "/", variable, "/", start, "/", end, 
+               "?API_KEY=", api_key, sep = "")
+  initialquery = jsonlite::fromJSON(PATH)
+  rawfm = initialquery$results
+  return(rawfm)
+}
+
+#Female/male arrest data
+fmFraud = cdeArrest("fraud", "monthly", "1985", "2017")
+fmFraud = fmFraud %>%
+    select(data_year, male_count, female_count) %>%
+    mutate(proportion_female = female_count/sum(male_count,female_count))
+
+# Race fraud arrest data
+rfraud = cdeArrest("fraud", "race", "1985", "2017")
+rfraud = rfraud %>%
+    select(-csv_header)
+
+#Buold joint DF
+fraud_frame = left_join(fmFraud, rfraud)
+```
+
+This data set details the number total number of arrests for fraud by sex and race from 1985 to 2017. We could use this data to answer how the proportion of females arrested for fraud has changed over time. We can compute proportions for the other included demographics and make similar comparisons over time.
+
+## Creating the second data set
+
+The next data set takes advantage of the alpha vantage api, and the function below
+retrieves data on apple stock over the last 100 days. I also pull data on SPY. 
+```{r}
+dailystock = function(ticker, output, apikey = "K7S5149DVD5I7SQ0"){
+  URL = paste("https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=")
+  PATH = paste(URL, ticker, "&apikey=", apikey,"&outputsize=", output, sep = "")
+  initialquery = jsonlite::fromJSON(PATH)
+  priceraw = initialquery$`Time Series (Daily)`
+  x = rbindlist(priceraw, idcol = TRUE)
+  newnames = c('id', 'open',"high", "low", "close", "volume")
+    x = x %>%
+    rename_at(vars(names(x)), ~newnames)
+  return(x)
+}
+
+
+# Retrieve/clean SPY ETF data
+sp500 = dailystock("SPY", "compact")
+sp500 = sp500 %>%
+  select(id, close)
+sp500$close = as.numeric(sp500$close)
+
+#Retrieve/clean Apple Stock Data, create spread variable
+applestock = dailystock("aapl", "compact")
+applestock$close = as.numeric(applestock$close)
+applestock$high = as.numeric(applestock$high)
+applestock$low = as.numeric(applestock$low)
+
+#Build a joint dataframe
+apple500 = right_join(applestock, sp500, by = "id")
+
+```
+
+An example of a question this dataset could look at is how the the spread between 
+high and low prices changes with trading volume. We could also look at the correlation between apple's stock price and the market (measured by SPY ETF movement).
+
+## Export Data to csv
+```{r}
+write.csv(apple500, file = 'apple500.csv', row.names = FALSE)
+write.csv(fraud_frame, file = 'fraud.csv', row.names = FALSE)
+```
+

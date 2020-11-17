@@ -1,0 +1,109 @@
+#1
+Yelp api.
+This dataset contains 50 restaurants with their address and their rate in Irvine within 5 miles. It could be used to locate your next dinner place :)
+```{r}
+library(jsonlite)
+library("writexl")
+
+client_id <- "q-f2lLVGZkys5AVkVPWsuQ"
+client_secret <- "tLcN4rX8BzXZTSE5fYKHntHgSbjHilyGQV8VoXq0zGgiwP7RM8rS0PCOuRyRpn6UkMsEE9gnXWqEs2V32IreXfwVjao7iiAgKeJQ85u2n_mbuZn3-Tuq3R7qs4CPX3Yx"
+
+res <- POST("https://api.yelp.com/oauth2/token",
+            body = list(grant_type = "client_credentials",
+                        client_id = client_id,
+                        client_secret = client_secret))
+
+token <- content(res)$access_token
+
+yelp <- "https://api.yelp.com"
+term <- "Restaurant"
+location <- "Irvine,CA"
+categories <- NULL
+limit <- 50
+radius <- 8000
+url <- modify_url(yelp, path = c("v3", "businesses", "search"),
+                  query = list(term = term, location = location, 
+                               limit = limit,
+                               radius = radius))
+res <- GET(url, add_headers('Authorization' = paste("bearer", client_secret)))
+
+results <- content(res)
+
+yelp_httr_parse <- function(x) {
+
+  parse_list <- list(
+                     name = x$name, 
+                     rating = x$rating, 
+                      
+                     address1 = x$location$address1 
+                     )
+  
+  parse_list <- lapply(parse_list, FUN = function(x) ifelse(is.null(x), "", x))
+  
+  df <- data.frame(
+                   name=parse_list$name, 
+                   rating = parse_list$rating, 
+                   address1 = parse_list$address1 
+)
+  df
+}
+
+results_list <- lapply(results$businesses, FUN = yelp_httr_parse)
+
+business_data <- do.call("rbind", results_list)
+business_data
+
+
+write_xlsx(business_data,"/Users/jtlee/Desktop/UCLA/Econ441\\yelp2.xlsx")
+```
+
+#2
+
+FRED API
+This dataset all relevant information about the GNP of Japan and Canada. It can be used to compare the GNP between Japan and Canada. Moreover, by using this api function, users can get any economic information of any countries that FRED includes.
+
+```{r}
+
+  
+library(jsonlite)
+library("writexl")
+FRED_APIkey="43feed24d714332ac6ad5110919b6556"
+realtime_start="2018-01-01"
+realtime_end="2020-09-01"
+search_text="GDP+China"
+limit="50"
+Fred_search=function(FRED_APIkey,search_text,realtime_start,realtime_end,limit){
+URL= "https://api.stlouisfed.org/fred/series/search"
+
+parameters = paste(
+  "?search_text=",search_text,
+  "&api_key=",FRED_APIkey,
+  "&file_type=json",
+  "&realtime_start=",realtime_start,
+  "&realtime_end=",realtime_end,
+  "&limit=",limit,
+  sep="")
+PATH=paste0(URL,parameters)
+initialquery=fromJSON(PATH)
+attach(initialquery)
+df= initialquery$seriess
+df=df[c("title","units","popularity","notes")]
+return(df)
+
+
+}
+AB=Fred_search(FRED_APIkey="43feed24d714332ac6ad5110919b6556",
+realtime_start="2000-01-01",
+realtime_end="2020-09-01",
+search_text="GNP+Canada",
+limit="50")
+
+CD=Fred_search(FRED_APIkey="43feed24d714332ac6ad5110919b6556",
+realtime_start="2018-01-01",
+realtime_end="2020-09-01",
+search_text="GDP+Japan",
+limit="50")
+
+abcd=rbind(AB,CD)
+write_xlsx(abcd,"/Users/jtlee/Desktop/UCLA/Econ441\\FRED4.xlsx")
+```

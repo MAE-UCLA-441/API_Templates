@@ -1,0 +1,126 @@
+---
+title: "Two Datasets from API's"
+author: ""
+fontfamily: mathpazo
+output:
+  pdf_document:
+    toc: yes
+  fig_caption: yes
+  highlight: haddock
+  number_sections: yes
+  df_print: paged
+  html_document:
+    toc: yes
+    df_print: paged
+fontsize: 10.5pt
+editor_options: null
+chunk_output_type: console
+--- 
+```{r, echo=FALSE, warning=FALSE, message= FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=100))
+```
+
+```{r, echo=FALSE, warning=FALSE, message= FALSE}
+#Import Package
+library(jsonlite)
+```
+
+# API Dataset 1
+```{r}
+product_type = "eyeliner"
+product_category = "liquid"
+price_less_than = 8
+rating_greater_than = 3
+
+URL = paste("http://makeup-api.herokuapp.com/api/v1/products.json?", "product_type=", product_type, "&", "product_category=", product_category, "&", "price_less_than=", price_less_than, "&", "rating_greater_than=", rating_greater_than, sep = "")
+PATH = paste(URL, sep = "")
+
+initialquery = jsonlite::fromJSON(PATH)
+
+print(initialquery)
+
+df_liner = data.frame(initialquery)
+df_liner = as.matrix(df_liner)
+
+write.csv(df_liner, "/Users/madelyncaufield/Desktop/ECON441A Applied Data Management for Economists\\MyMakeupbrandData.csv", row.names = FALSE)
+```
+This dataset contains the price of different liquid eyeliners and their associated ratings. The data could be used to measure the liquid eyeliner that gives you the most bang for your buck at the highest rating. We could change parameters accordingly to either meet a certain price or rating threshold depending on the consumers budget and preference. 
+
+# API Dataset 2
+```{r}
+output <- data.frame(matrix(ncol = 2, nrow = 0))
+colnames(output) <- c("Date", "Articles")
+
+get_num_articles <- function(month, year, words, APIkey){
+  URL = paste("https://api.nytimes.com/svc/archive/v1/", year, "/", month,".json?", sep = "")
+  PATH = paste(URL, "api-key=", APIkey, sep="")
+  initialquery = jsonlite::fromJSON(PATH)
+  
+  df = as.data.frame(initialquery$response$docs)
+  
+  booleans = grepl(words, df$abstract, fixed=TRUE)
+  mentions = sum(booleans)
+  
+  temp <- data.frame(Date = paste(year , "/" , month, sep = ""), Articles =  mentions)
+  return(temp)
+}
+
+words ="Democrat"
+APIkey = "Rooe4zcigoDA1qD1HHlNs3FvqpyMUL1x"
+
+months = c(1:10) 
+years = c(2020)
+for(year in years){
+  year = toString(year)
+  for (month in months){
+    month = toString(month)
+    temp = get_num_articles(month,year, words, APIkey)
+    output = rbind(output,temp)
+  }
+}
+  
+output
+
+write.csv(output, file = 'exported_Democrat_data.csv')
+```
+
+```{r}
+output2 <- data.frame(matrix(ncol = 2, nrow = 0))
+colnames(output2) <- c("Date", "Articles")
+
+get_num_articles <- function(month, year, words, APIkey){
+  URL = paste("https://api.nytimes.com/svc/archive/v1/", year, "/", month,".json?", sep = "")
+  PATH = paste(URL, "api-key=", APIkey, sep="")
+  initialquery = jsonlite::fromJSON(PATH)
+  
+  df = as.data.frame(initialquery$response$docs)
+  
+  booleans = grepl(words, df$abstract, fixed=TRUE)
+  mentions = sum(booleans)
+  
+  temp <- data.frame(Date = paste(year , "/" , month, sep = ""), Articles =  mentions)
+  return(temp)
+}
+
+words ="Republican"
+APIkey = "Rooe4zcigoDA1qD1HHlNs3FvqpyMUL1x"
+
+months = c(1:10) 
+years = c(2020)
+for(year in years){
+  year = toString(year)
+  for (month in months){
+    month = toString(month)
+    temp = get_num_articles(month,year, words, APIkey)
+    output2 = rbind(output2,temp)
+  }
+}
+  
+output2
+
+write.csv(output2, file = 'exported_Republican_data.csv')
+```
+The dataset contains the number of articles that mention the word "Democrat" and/or "Republican" in the abstract from 01/2020 up until this month, 10/2020. The data could be used to measure recent political bias in the New York Times media surrounding this years election, however the data does not account for opinionated versus objective articles. 
+
+THE END. 

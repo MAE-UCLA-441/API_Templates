@@ -1,0 +1,69 @@
+---
+title: ""
+author: ""
+output:
+  pdf_document:
+    latex_engine: xelatex
+fontsize: 11pt
+---
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60, tidy=TRUE))
+```
+
+```{r}
+#Import Package
+library(jsonlite)
+```
+
+
+
+## Data description
+This dataset contains 3 types of quarterly measured trade balance from 1960 to 2010. Specifically, we have discounted balance on current account, goods and services, and investment income. It could be used to measure how these trade balances change over time, or how are they correlated with each other.
+
+
+# Dataset 2: CDE (Crime Data Explorer) API
+## Get the dataset
+We look at the arrest demographic data in California. Here, we specifically fetch crime data for offenders aged between 13 and 14.
+```{r}
+cde_get_data = function(offense, since="1991", until="2010") {
+  APIkey = "H4BjNdS8MMNWA3EbS06cXutBWyX3PxW2X7WcHm44"
+  URL = "https://api.usa.gov/crime/fbi/sapi/api/data/arrest/states/CA"
+  
+  # Count for male offenders under the age of 10
+  param = paste("/", offense, "/male/", since, "/", until, "?API_KEY=", APIkey, sep="")
+  PATH = paste0(URL, param)
+  df = fromJSON(PATH)$results
+
+  rownames(df) = df$data_year  # Change index to year
+  df = df[c("range_13_14")]   # Keep only data for age under 10
+  
+  # Female offenders under the age of 10
+  param = paste("/", offense, "/female/", since, "/", until, "?API_KEY=", APIkey, sep="")
+  PATH = paste0(URL, param)
+  df_female = fromJSON(PATH)$results
+  
+  # Sum up all offenders
+  df[c("range_13_14")] = df[c("range_13_14")] + df_female[c("range_13_14")]
+  colnames(df) = offense
+  
+  return(df)
+}
+
+# We consider three types of offenses
+offenses = c("burglary", "stolen-property", "weapons")
+df_burglary = cde_get_data(offenses[1])
+df_stolen = cde_get_data(offenses[2])
+df_weapons = cde_get_data(offenses[3])
+
+data = cbind(df_burglary, df_stolen, df_weapons)
+
+# Export the data as a csv file
+write.csv(data, "Offenders between 13 and 14.csv")
+```
+
+## Dataset description
+This dataset contains offense counts in CA from 1991 to 2010 for burglary, stolen-property and weapons, for offenders between the age of 13 and 14. It may be used to analyze how the number of teenager offenders changes over time, which may help to improve the education system in California.
+
+

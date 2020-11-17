@@ -1,0 +1,71 @@
+---
+title: "Econ 441 Two datasets created form API Data"
+author: ""
+date: "10/26/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+install.packages(c("httr", "jsonlite"))
+library(httr)
+library(jsonlite)
+```
+
+```{r}
+install.packages("devtools")
+devtools::install_github("sboysel/fredr")
+```
+```{r}
+library(fredr)
+fredr_set_key("e66ea9c7bd23f81fec842cd1466a671f")
+```
+
+```{r}
+df1= data.frame(fredr_series_observations(
+  series_id = "OILPRICE",
+  observation_start = as.Date("2010-01-01"),
+  observation_end = as.Date("2012-01-01"),
+  frequency = "q",
+  unit = "chg"
+))
+df2 = data.frame(fredr_series_observations(
+  series_id = "A191RL1Q225SBEA",
+  observation_start = as.Date("2010-01-01"),
+  observation_end = as.Date("2012-01-01"),
+  frequency = "q",
+  unit = "chg"
+))
+
+df1
+df2
+
+newdata =cbind(df1,df2)
+
+write.csv(newdata, "FRED Dataset.csv")
+
+#Comment:This dataset contains both oilprice and Real Gross Domestic Product changes in US for every given quarter from 2010 to 2012. It could be used to measure and test whether the oilprice changes and Real Gross Domestic Product changes are correlated. 
+
+```
+```{r}
+APIkey = "y5CsRuqqPeIfJtzv70oevQbWFA2X32bFRXhpO6A2"
+
+URL = paste("https://api.nasa.gov/insight_weather/","?api_key=y5CsRuqqPeIfJtzv70oevQbWFA2X32bFRXhpO6A2&feedtype=json&ver=1.0", sep = "")
+PATH = paste("https://api.nasa.gov/insight_weather/","?api_key=y5CsRuqqPeIfJtzv70oevQbWFA2X32bFRXhpO6A2&feedtype=json&ver=1.0", sep = "")
+initialquery = jsonlite::fromJSON(PATH)
+df = as.data.frame(initialquery$response$docs)
+names(initialquery)
+
+my_data = cbind(initialquery$"670",initialquery$"671",initialquery$"672",initialquery$"673",initialquery$"674",initialquery$"675",initialquery$"676")
+
+write.csv(my_data,"NASA Dataset.csv")
+
+jsonlite::fromJSON(PATH)
+
+
+#Comment:This dataset contains per-Sol summary data for each of the last seven available Sols on several aspects such as season, campass degree and etc. It could be used to compare the difference between each sols. 
+```
+
+
+
+```

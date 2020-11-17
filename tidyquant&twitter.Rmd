@@ -1,0 +1,86 @@
+---
+title: "HW 1 - Due 10/25"
+author: ""
+output: pdf_document
+---
+**Direction**:\
+
+Two datasets created form API Data.\
+_Files to submit_:\
+
+* 2 Structured Datasets in csv, xls, etc. format.\
+* 1 RMD file with your code for calling the APIs and creation of the dataset.\
+* Please comment 1-2 sentences for each dataset describing the data and a potential question it could be used to answer.\
+
+I.E ( This dataset contains the percent of articles that mention gold for every given month back to 1971. It could be used to measure public sentiment on gold to test if sentiment has any baring on price changes. )
+Full points will be given for datasets that use more than one API call to create at least a 2 column dataset. 
+Extra credit (5% for each dataset) will be given if you use an API not used as an example in class.
+
+
+Pulling data and make data frame in stock. 
+```{r echo=FALSE, warning=FALSE}
+#we need to pull the data from yahoo finace. 
+library(tidyquant)
+
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+# Downloading Apple price using quantmod
+
+from <- "2020-01-01"
+to <- "2020-10-18"
+
+apple_price <- getSymbols("AAPL", from = from,
+           to = to, warnings = FALSE,
+           auto.assign = TRUE)
+apple_price
+
+write.csv(apple_price, "apple_price.csv")
+
+
+#Expoler the data
+head(AAPL)
+
+chart_Series(AAPL)
+chart_Series(AAPL['2020-10/2020-10'])
+
+```
+
+
+```{r}
+library(twitteR)
+library(ROAuth) #this will help us go direct in
+#setting API 
+APIkey <- "EdJxLpZ3itD1RGi00Gm960rEU"
+API_Secret_key <- "pQgeehr73OrnCZjSjbgJfPpYP0zVexXhdTFmnYbUph9Q75pYRg"
+Access_token <- "1314713402237808640-LPnv8Zc70drRKgKXBUmDYQcF7ATMV3"
+Access_token_secret <- "ijS2CB6G3gQULytNHqkQSxMMijVuPOvF5sbyN7gVpX81j"
+
+setup_twitter_oauth(APIkey, API_Secret_key, Access_token, Access_token_secret)
+
+```
+Analyses Twitter : Making data frame for tweet with words "Apple" 
+```{r}
+library(tidyverse)
+library(twitteR)
+library(tidytext)
+
+#Make a search function for twitter
+fn_twitter <- searchTwitter("#Apple", n=1000, lang="en")
+
+#generating df
+fn_twitter_df <- twListToDF(fn_twitter)
+
+#we need to tokenization the text from df to help us analyses them
+tweet_words <- fn_twitter_df %>% select(id, text) %>% unnest_tokens(word,text)
+
+write.csv(tweet_words,"tweet_words.csv")
+
+tweet_words %>% count(word,sort=T) %>% slice(1:20) %>% 
+  ggplot(aes(x = reorder(word, 
+    n, function(n) -n), y = n)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(angle = 60, 
+    hjust = 1)) + xlab("")
+```
+
+As we can see from about, we have Apple stock price data and twitter data. The two questions I want to understand and look into are:\
+1. What is the correlation between numbers of tweet that related to "APPLE" to Apple stock price?
+2. What are the sentiment that produce from these tweet that can impact Apple? 

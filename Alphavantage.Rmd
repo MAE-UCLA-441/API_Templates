@@ -1,0 +1,109 @@
+---
+title: "Econ-441 Homework-1"
+author: ""
+date: "2020/10/18"
+output: html_document
+---
+#Running library
+```{r}
+library(jsonlite)
+```
+
+
+
+#API-1
+#US_Real_GDP function could be used to query the time series data from FRED website
+
+
+
+#API-2
+
+#Qestion for the API-2
+
+#The API-2 function could be used to query the most recent days of intraday data of the Stock company trading information. Using the function to get the recent IBM and Intel stock trading information. Comparing them, what do you find? Does two company has similar stock price tendency?
+
+
+#Recent_stock_price could be used to query the most recent days of intraday data and is best suited for short-term charting and trading strategy development.
+```{r}
+
+#library require function
+library(jsonlite)
+
+
+Recent_stock_price <- function(Alpha_Vantage_symbol,Alpha_Vantage_outputsize,Alpha_Vantage_APIkey){
+
+Alpha_Vantage_URL <- "https://www.alphavantage.co/query"
+
+
+Alpha_Vantage_Parameters <- paste("?function=TIME_SERIES_INTRADAY",
+                         "&symbol=",Alpha_Vantage_symbol,
+                         "&interval=1min",
+                         "&outputsize=",Alpha_Vantage_outputsize,
+                         "&apikey=",Alpha_Vantage_APIkey,
+                         sep = "")
+
+Alpha_Vantage_Path <- paste(Alpha_Vantage_URL,Alpha_Vantage_Parameters,sep = "")
+# get the path that we want to query
+
+Alpha_Vantage_query <- fromJSON(Alpha_Vantage_Path)
+# query data from website
+
+stock_data <- Alpha_Vantage_query$`Time Series (1min)`
+# get the stock data that we want
+
+stock_data_df <- as.data.frame(do.call(rbind, stock_data))
+# transfer stock raw data to a data.frame by row 
+
+
+stock_data_df_edit <- as.data.frame(lapply(stock_data_df, unlist))
+# Unlist the data type in the original data frame from list to character and saved
+
+stock_data_df_edit <- as.data.frame(lapply(stock_data_df_edit, as.numeric))
+# Transfer the character data into numeric
+
+rownames(stock_data_df_edit) <- rownames(stock_data_df)
+# rename the new dataframe
+
+return(stock_data_df_edit)
+
+}
+```
+
+
+
+```{r}
+Alpha_Vantage_symbol <- "IBM"
+#The name of the company Stock of your choice. For example: symbol=IBM
+Alpha_Vantage_outputsize <- "full"
+# "compact" or "full"
+# compact returns only the latest 100 data points in the intraday time series; 
+# full returns the full-length intraday time series. 
+# The "compact" option is recommended if you would like to reduce the data size of each API call.
+Alpha_Vantage_APIkey <- "B40DBOBUPUHVY8OR"
+
+Recent_Stock_Price <- Recent_stock_price(Alpha_Vantage_symbol,Alpha_Vantage_outputsize,Alpha_Vantage_APIkey)
+
+write.csv(Recent_Stock_Price,"C:/Users/limin/Desktop/UCLA Master 2020  Fall/ECON 441A/Homework-1/Recent-Stock-Price.csv",row.names=T)
+
+
+
+### The dataset contains the recent IBM stock trading infromation around two weeks, It could be used to measure the trendy of the company's stock price. Also, it could be used to measure the percentage value change of the company in the stock market.
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

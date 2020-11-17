@@ -1,0 +1,130 @@
+---
+title: "Econ 441A HW1"
+author: ""
+date: "10/16/2020"
+output: html_document
+---
+```{r}
+library(jsonlite)
+#This first attempt is a single call from fred, which contain a column of date and a column of data.
+URL = "https://api.stlouisfed.org/fred/series/observations"
+APIkey = "ac6ef5a4dc0f4b9565ebcbb52c0766b5"
+series_id = c("UNRATE")
+observation_start = "2000-01-01"
+
+fred_get_series <- function(APIkey, series_id, observation_start){
+  URL = "https://api.stlouisfed.org/fred/series/observations"
+  
+  parameter = paste(
+    "?series_id=", series_id,
+    "&api_key=", APIkey,
+    "&file_type=json",
+    "&observation_start=", observation_start,
+    sep = "")
+
+  PATH = paste0(URL, parameter)
+
+  initalq <- fromJSON(PATH)
+  df_unem <- data.frame(initalq$observations)
+  df_fred <- subset(df_unem, select = -c(1,2))
+  return(df_fred)
+}
+
+fred_get_series(APIkey, series_id, observation_start)
+```
+
+
+```{r}
+#This second attempt is done after Oct 23 lecture. Decided to give it a try on forloop api call function.
+
+URL = "https://api.stlouisfed.org/fred/series/observations"
+APIkey = "ac6ef5a4dc0f4b9565ebcbb52c0766b5"
+series_id = c("UNRATE", "INDPRO")
+observation_start = "2000-01-01"
+
+fred_get_multi_series <- function(APIkey, series_id, observation_start){
+  length <- length(series_id)
+  df <- fred_get_series(APIkey, series_id[1], observation_start)
+  for(i in 2:length){
+    df_temp <- fred_get_series(APIkey, series_id[i], observation_start)
+    df <- merge(df, df_temp, by="date")
+  }
+  
+  for(i in 1:length){
+    colnames(df)[i+1] <- series_id[i]
+  }
+  return(df)
+}
+
+boom <- fred_get_multi_series(APIkey, series_id, observation_start)
+boom
+plot(c(1:249), boom$UNRATE, type="l")
+plot(c(1:249), boom$INDPRO, type="l")
+#write.csv(boom, 'Econ 441 HW1_df1.csv', row.names = TRUE)#
+```
+# This data frame combine monthly unemployment rate(UNRATE) and monthly Industrial Production Index(INDPRO), INDPRO measures real output for all facilities located in the United States with unit of Index 2012=100. Use this dataset, we can analyze how unemployment are related to our production. For example, although the unemployment rate are much higher during the pandanmic compare to 2008 subprime crisis, the production index did not drop as much. 
+
+```{r}
+library(jsonlite)
+
+URL = "http://api.eia.gov/series/"
+APIkey = "4b7fc3dfb09c8ce47ef1323ea2eb5619"
+series_id = "TOTAL.TETCBUS.M"
+observation_start = "200001"
+
+parameter = paste(
+  "?series_id=", series_id,
+  "&api_key=", APIkey,
+  "&start=", observation_start,
+  "&file_type=json",
+  sep = "")
+
+PATH = paste0(URL, parameter)
+initalq <- fromJSON(PATH)
+initalq$series$data
+df_pw<-as.data.frame(initalq$series$data)
+df_pw$X1 <- rev(df_pw$X1)
+df_pw$X2 <- rev(df_pw$X2)
+df_pw$X1 <- as.character(df_pw$X1)
+df_pw$X2 <- as.character(df_pw$X2)
+colnames(df_pw)[1] <- "date"
+colnames(df_pw)[2] <- "TOTAL.TETCBUS.M"
+df_pw
+plot(c(1:246), df_pw$TOTAL.TETCBUS.M, type = "l")
+```
+
+# This is Monthly Total Primary Energy Consumption from U.S Energy Information Administration. The term Primary Energy describes "any form of energy found in nature that has not been subjected to any human engineered conversion process"(This part is from wikipedia). Examples are oil, coal, natural gas, nuclear, hydro. Primary enegry is the fundamental source of enegry that supports daily function of our society. From the data we can see a significant drop in the Total Primary Energy Consumption during pandamic, and it is more significant than 2008 subprime crisis. Related to the previous dataset from fred, we see a unsually trend: although the indusrtal production had a relatively small drop(compare to 2008), the energy consumption droped a much greater amount. This is due to quarantine and social distancing.
+
+```{r}
+library(jsonlite)
+
+URL = "http://api.eia.gov/series/"
+APIkey = "4b7fc3dfb09c8ce47ef1323ea2eb5619"
+series_id = "TOTAL.FFTCBUS.M"
+observation_start = "200001"
+
+parameter = paste(
+  "?series_id=", series_id,
+  "&api_key=", APIkey,
+  "&start=", observation_start,
+  "&file_type=json",
+  sep = "")
+
+PATH = paste0(URL, parameter)
+initalq <- fromJSON(PATH)
+initalq$series$data
+df_ff<-as.data.frame(initalq$series$data)
+df_ff$X1 <- rev(df_ff$X1)
+df_ff$X2 <- rev(df_ff$X2)
+df_ff$X1 <- as.character(df_ff$X1)
+df_ff$X2 <- as.character(df_ff$X2)
+colnames(df_ff)[1] <- "date"
+colnames(df_ff)[2] <- "TOTAL.FFTCBUS.M"
+df2 <- merge.data.frame(df_pw, df_ff, by="date")
+colnames(df2)[2] <- "TOTAL.TETCBUS.M"
+colnames(df2)[3] <- "TOTAL.FFTCBUS.M"
+df2
+#write.csv(df2, 'Econ 441 HW1_df2.csv', row.names = TRUE)#
+```
+
+# This chunk of code is added just in case "date" doesn't count as a column. "TOTAL.FFTCBUS.M" is the monthly total fossil fuel consumption. It is a major component of primary energy as we can see from the data. It shows that the energy structure in U.S is still much depend on fossil fuel.

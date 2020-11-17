@@ -1,0 +1,54 @@
+---
+title: "441A_HW1"
+author: "Yawen Wang"
+date: "10/11/2020"
+output: html_document
+---
+
+
+```{r}
+library(jsonlite)
+library(httr)
+```
+
+----------------------
+```{r}
+IEX_token = "pk_7750cb06fe7b47f396624ae715266933"
+URL = "https://cloud.iexapis.com/stable/stock/tsla/chart/1m?token="
+PATH <- paste(URL,IEX_token,sep="")
+raw_data <- httr::GET(PATH)
+A <- httr::content(raw_data,as ="text")
+B <- fromJSON(A, flatten = TRUE)
+df <- as.data.frame(B)
+write.csv(df,file = "431_HW1_data1.csv")
+```
+
+
+```{r}
+df$date[df$change <0]
+```
+##This data shows the historical data of Tesla for the last 30 trailing calendar days.The data can be used to track how the stock price of Tesla changes last month, by the coding on the last line, we can know that the date when tesla's prices went down last month.
+-----------Top Cities worldwide-----------
+
+```{r}
+library(dplyr)
+APIkey = "MscbFMTWBzAKppJHAHucjOHL39GYSuuC"
+
+URL <- "http://dataservice.accuweather.com/locations/v1/topcities/"
+num <- 50
+PATH <- paste(URL,num,"?","apikey=",APIkey,sep="")
+
+raw_data <- httr::GET(PATH)
+content <- httr::content(raw_data, as = "text") 
+cities_json <- fromJSON(content, flatten = TRUE)
+cities_df <- as.data.frame(cities_json)
+city_name <- cities_df$EnglishName
+city_country <-cities_df$Country.EnglishName
+city_region <-cities_df$Region.EnglishName
+result = cbind(city_name,city_country,city_region)
+write.csv(result,file = "431_HW1_data2.csv")
+```
+### This dataset shows the top 50 cities in worldwide currently, including city_name, city_country and city_region, and can be used to figure out which region and country has the most numbers of big cities.
+
+
+

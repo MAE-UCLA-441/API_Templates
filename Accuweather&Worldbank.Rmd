@@ -1,0 +1,118 @@
+---
+title: '441A Homework #1'
+author: "Dustin Oakes"
+date: "10/23/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##1 AccuWeather API Pull
+
+I accessed the AccuWeather API to pull the 5-day forecast of the outdoor activity daily index measure. A 10 means a good day to go outside, while a low score indicates bad air quality. A possible extension of these functions could see a comparision being done between cities to rank air quality, or some sort of app to inform users whether or not air quality is currently good enough to go work out.
+
+```{r}
+#AccuWeather API Pull
+library(jsonlite)
+
+#AccuWeather API Key
+APIKey = "t9xp0OztLLDJYeLOdTUR7beG7afXbIye"
+locationkey = "347625" #347625=Los Angeles
+locationnames = "Los Angeles"
+ID = "29" #29=outdoor activity index
+
+# To get a single daily index (29=outdoor activity index)
+
+get_accu_index <- function(APIKey,locationkey,ID){
+  URL = "http://dataservice.accuweather.com/indices/v1/daily/5day"
+  
+  parameters = paste(
+    "/",locationkey,
+    "/", ID,
+    "?apikey=", APIKey,
+    sep = "")
+  PATH = paste0(URL, parameters)
+  
+  outdoor = fromJSON(PATH)
+
+  rownames(outdoor) <- outdoor$LocalDateTime  #Change index to a Date
+  
+  outdoor = outdoor[c("Value")]
+  
+  colnames(outdoor) <- locationnames[1]
+  
+  return(outdoor)
+  }
+  
+
+get_accu_index(APIKey,locationkey,ID)
+
+# To get a daily index across multiple locations
+
+#AccuWeather API Key (multiple locations)
+APIKey = "t9xp0OztLLDJYeLOdTUR7beG7afXbIye"
+locationkey = c("347625", "178087") #LA(347625)/Berlin(178087)
+locationnames = c("Los Angeles", "Berlin")
+ID = "29" #29=outdoor activity index
+
+get_multiloc_accu_index <- function(APIKey,locationkey,ID){
+  
+  num_vars = length(locationkey)
+  
+  output = get_accu_index(APIKey,locationkey[1],ID)
+  colnames(output) <- locationnames[1]
+  
+  for (i in 2:num_vars){
+    output_temp = get_accu_index(APIKey,locationkey[i],ID)
+    colnames(output_temp) <- locationnames[i]
+    
+    finoutput = cbind.data.frame(output,output_temp)
+  }
+  
+  return(finoutput)
+}
+
+get_multiloc_accu_index(APIKey,locationkey,ID)
+```
+
+
+##2 World Bank API Pull
+
+Here I accessed the World Bank API to pull info on the population of the Arab World, yearly dating back to 1971. This information could be used to formulate hypotheses about economic development and the migration of labor in the late 20th-century in and across Africa.
+
+```{r}
+#World Bank API Pull
+
+library(jsonlite)
+
+country = "all"
+indicator = "SP.POP.TOTL"
+format = "json"
+
+get_wb_data <- function(country,indicator,format){
+  URL = "http://api.worldbank.org/v2"
+  
+  parameters = paste(
+    "/country/",country,
+    "/indicator/", indicator,
+    "?format=", format,
+    sep = "")
+  
+  wbpath = paste0(URL, parameters)
+  
+  wbdata = fromJSON(wbpath)
+  popdata = wbdata[[2]]
+  
+  rownames(popdata) <- popdata$date
+  
+  popdata = popdata[c("value")]
+  
+  return(popdata)
+}
+
+get_wb_data(country,indicator,format)
+
+```
+

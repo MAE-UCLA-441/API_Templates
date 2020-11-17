@@ -1,0 +1,105 @@
+---
+title: "441A Homework 1"
+author: ""
+fontfamily: mathpazo
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+  fig_caption: yes
+  highlight: haddock
+  number_sections: true
+  df_print: paged
+fontsize: 10.5pt
+editor_options:
+chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. City Bikes
+
+```{r}
+#City Bikes
+library(jsonlite)
+URL = "http://api.citybik.es/v2/networks"
+bikes = fromJSON(URL)
+
+bike_data = bikes$networks$location
+US_bikes = bike_data$city[bike_data$country == "US"]
+#This tells us the names of the cities in the United States that have CityBikes.
+
+US_bike_data = subset(bike_data, bike_data$country == "US")
+#This creates a data set of only the bikes which are in the United States. It could be used to answer how many CityBikes there are in the US, or which cities in the US have CityBikes, or which State has the most CityBikes. 
+
+nrow(US_bike_data)
+#This tells us that there are 64 rows in the data frame, meaning that there are 64 different locations in the US with CityBikes. 
+
+#Create txt table
+write.table(US_bike_data, file = "US_bike_data.txt", row.names = TRUE, col.names = TRUE)
+```
+
+# 2. Meteorite Landings
+
+```{r}
+#NASA Data on Meteorite Landings consisting of 34,513 meteorites. 
+meteorite_landings = "gh4g-9sfh"
+URL = paste("https://data.nasa.gov/resource/", sep = "")
+PATH = paste(URL, meteorite_landings, ".json", sep="" )
+
+nasa_data = jsonlite::fromJSON(PATH)
+print(nasa_data)
+
+small_meteorites = subset(nasa_data, nasa_data$mass < 22)
+#This creates a new data frame of all meteorites whose mass is less than 22 grams. It could be used to answer 
+#what is the average mass of meteorites under 22grams, or maybe where they fell geographically.  
+
+small_and_recent = subset(small_meteorites, small_meteorites$year>2000-01-01)
+#This creates a new data frame of all meteorites whose mass is less than 22 grams and which fell after January 1st, 2000. 
+
+mass_list = as.numeric(small_and_recent$mass)
+mean(mass_list)
+#This tells us the mean of these selected meteorites. 
+
+#Create txt table
+write.table(small_and_recent, "meteorites.txt", row.names = TRUE, col.names = TRUE)
+
+```
+
+# 3. Mars Rover Photos (with API Key)
+
+```{r}
+#NASA
+library(httr)
+earth_date = "2018-1-1"
+camera = "RHAZ"
+apikey = "VKbEPVIO9pqWwbIPe5R5maFlRmLQjYu8IBBRbunc"
+URL = "https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos"
+parameters = paste(
+  "?earth_date=", earth_date,
+  "&camera=", camera,
+  sep = ""
+)
+PATH = paste(URL, parameters, "&api_key=", apikey, sep = "")
+res = GET(PATH)
+
+data = fromJSON(rawToChar(res$content)) 
+names(data$photos)
+
+#Write CSV file
+write.csv(data$photos, "marsphotos.csv")
+
+print(data$photos$id)
+#This returns the ID numbers of all photos taken by the mars rover on January 1st, 2018 by just the Read Hazard Avoidance Camera (RHAZ). It could be used to find out how many photos were taken by this specific
+#camera on this specific day. 
+```
+
+
+
+
+
+
+
+

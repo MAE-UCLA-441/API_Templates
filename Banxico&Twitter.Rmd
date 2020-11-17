@@ -1,0 +1,256 @@
+---
+title: 'UCLA ECON 441A: Applied Data Management'
+author: ""
+date: "10/22/2020"
+output:
+  pdf_document: default
+  html_document: default
+subtitle: Homework 1
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## (0) Clean console and call packages	
+	
+```{r}
+#rm(list=ls(all=TRUE))
+#cat("\014")	    #Cleans console
+
+#install.packages('siebanxicor')
+#install.packages('jsonlite')
+#install.packages('GET')
+library(siebanxicor)
+library(jsonlite)
+library(httr)
+library(ggplot2)
+
+```
+
+
+## (1) Banxico's API Wrapper
+
+We can get the API key from the Central Bank of Mexico in the following link:
+
+https://www.banxico.org.mx/SieAPIRest/service/v1/token
+
+The easy way is using "siebanxicor" library. 
+
+The first step is to create the API key on the central bank's website. Once we 
+generated it, we type the next command and the API key:
+
+```{r}
+
+setToken("bafc26d5c3c13e17b465d9550a5f38ca5f888a4dc8c6661ef3658720ba1702a9")
+
+```
+
+The second step is to retrieve the series id from its webpage. Then, we plug the id's
+in the next function as show below:
+
+```{r}
+
+idSeries <- c("SF43718","SF46410","SF46407") #id's series
+series <- getSeriesData(idSeries, '2000-01-01','2018-07-12') #We establish the initial and final date
+serie <- getSerieDataFrame(series, "SF43718") #we convert the data into dataframe
+
+```
+
+This way is convenient because we can plot easily the time series using "ggplot2"
+
+```{r}
+ggplot(NULL, aes(x=date, y=value)) +
+  geom_line(color="#ff1a1a", data = getSerieDataFrame(series, "SF43718")) +
+  geom_line(color="#0000b3", data = getSerieDataFrame(series, "SF46410")) +
+  geom_line(color="#00b300", data = getSerieDataFrame(series, "SF46407"))
+
+```
+
+## (2) Banxico's API 
+
+We use the packages "jsonlite" and "httr" to generate the database by ourselves in JSON format.
+
+Note that Banxico's API has a consult limit that only allows consulting up to 20 series. 
+The series id catalog is in the next link:
+
+https://www.banxico.org.mx/SieAPIRest/service/v1/doc/catalogoSeries
+
+Once we know the series to consult and get the API key, we proceed to set the parameters.
+
+```{r}
+API_key_banxico <- "bafc26d5c3c13e17b465d9550a5f38ca5f888a4dc8c6661ef3658720ba1702a9"
+initial_date <-"2010-01-01"
+final_date <-"2020-07-01"
+series_id_banxico <- "SF1,SR16734,SF331450,SE27803,SF17908"
+
+```
+
+The following part creates the function that will allow us to download data from Banco de Mexico economics database.
+
+```{r}
+banxico_get_series <- function(API_key_banxico, series_id_banxico, initial_date, final_date){
+  URL <- "https://www.banxico.org.mx/SieAPIRest/service/v1/series/"
+  parameters <- paste(series_id_banxico,"/datos/",initial_date,"/",final_date,"?token=",API_key_banxico,sep ="")
+  PATH <- paste0(URL, parameters)
+  query_banxico <- fromJSON(PATH)
+return(query_banxico$bmx$series)
+}
+
+```
+
+Once we created the function, we proceed to store the time series as shown below:
+
+```{r}
+
+data_banxico <- banxico_get_series(API_key_banxico, series_id_banxico, initial_date, final_date)
+
+```
+
+However, we face a problem which consists that the observations are stored in list format, which 
+is inconvenient for our purposes. We need to extract that data and convert it into dataframe. 
+
+```{r}
+
+k <- 127
+n <- length(data_banxico$datos)
+
+mtx_banxico <- matrix(NA,k,n)
+
+for (i in 1:n){
+  mtx_banxico[,i] <- as.numeric(gsub(",","",data_banxico$datos[[i]][,2]))
+}
+
+mtx_banxico <- as.data.frame(mtx_banxico)
+colnames(mtx_banxico) <- c(data_banxico$titulo[1],
+                           data_banxico$titulo[2],
+                           data_banxico$titulo[3],
+                           data_banxico$titulo[4],
+                           data_banxico$titulo[5])
+
+```
+
+Once we set the data ready, we print it on R and then export it in csv format.
+
+```{r}
+print(tail(mtx_banxico))
+```
+
+And we export it as follows:
+
+```{r}
+
+write.csv(mtx_banxico,"Banxico_database.csv", row.names = TRUE)
+
+```
+
+
+## (3) National Institute of Statistics and Geography of Mexico's API
+
+We generate our own API key in the following link:
+
+https://www.inegi.org.mx/servicios/api_indicadores.html
+
+And we repeat the proccedure by setting the parameters:
+
+```{r}
+API_key_inegi <- "36c55a30-5b09-f211-164e-06da067a41af"
+series_id_inegi <- c("444609","444568")
+
+```
+
+The next step is to create the function of INEGI's API.
+
+```{r}
+inegi_get_series <- function(API_key_inegi, series_id_inegi){
+  mtx_inegi <- matrix(NA,0,length(series_id_inegi))
+  URL <- "https://www.inegi.org.mx/app/api/indicadores/desarrolladores/jsonxml/INDICATOR/"
+  for (i in series_id_inegi){
+    parameters <- paste(i,"/es/0700/false/BIE/2.0/",API_key_inegi,"?type=jsonp",sep ="")
+    PATH <- paste0(URL, parameters)
+    query_inegi <- fromJSON(PATH)
+    mtx_inegi[i] <- query_inegi$Series$OBSERVATIONS[[1]][2]
+  }
+  return(mtx_inegi)
+  
+}
+
+```
+
+We run our function:
+
+```{r}
+
+data_inegi <- inegi_get_series(API_key_inegi,series_id_inegi)
+
+```
+
+Then we convert our data from list format to matrix format.
+
+```{r}
+mtx_inegi <- matrix(NA,183,2)
+
+for (i in 1:2){
+  mtx_inegi[,i] <- as.numeric(gsub(",","",data_inegi[[i]]))
+}
+
+colnames(mtx_inegi) <- c("Informal Employment Rate","Self-Employed Workers")
+
+```
+
+An finally we check that we did correctly the process by printing the last part of 
+the database and then we export it in csv format.
+
+```{r}
+print(tail(mtx_inegi))
+
+write.csv(mtx_inegi,"INEGI_database.csv", row.names = TRUE)
+
+```
+
+## (4) Twitter's API Mocker
+
+In this section we show the code to get the Twitter's credentials in order to use their data.
+However, we only show some basics such as monetary base (base monetaria in Spanish), and other 
+key words related to cash demand.
+
+```{r}
+#install.packages("rtweet")
+library(rtweet)
+an <- "base_mon"
+ak <- "e1FYKkEzVeg6TYtP7Ta4etfTC"
+ask <- "l8Uw6fDdMdxSOXzEsGNQXreSLNBsyKAb2jeXaNGUKYqgNPjE4V"
+at <-"558587999-zwP08BA5Mq2UVlJZ58pUEfRgKUmZlIWUJXnym6mq"
+ats<- "MCLClo4NyXjK9GstJuZRnX2Tidn1yGKasjxakbFFdQ5YT"
+create_token(an,ak,ask,at,ats) #create token
+```
+
+Once we created the token, we can plot some words tweeted in recent days.
+
+```{r}
+
+#monetary_base <- search_tweets(q = "base monetaria", n=5000,lang="es", include_rts = FALSE)
+#ts_plot(monetary_base)
+
+```
+
+
+However, we faced problems when we tried to knit r markdown, so we could not
+show the graph on this pdf.
+
+
+## (5) Comments on the Data
+
+This homework will help us in the future to run our econometric model of money demand for Mexico. 
+The purpose of creating the API of Banco de Mexico and INEGI is that those institutions publish 
+the macroeconomic data  of Mexico. In particular, for the Banco de Mexico's case we created a 
+function to download the data of the Monetary Base, the monetary policy interest rate, the 
+monthly indicator of production, and the remittances. On the other hand, the INEGI's API will 
+help us to collect the data of the informal sector occupation rate and self-employed workers, 
+since these indicators are useful to explain the money demand in Mexico. 
+
+For the Twitter's API there is more work to do in order to build a variable that will try to measure 
+the daily seasonality of the money demand in Mexico by searching for key words in Mexico,
+such as "money", "cash machines", "payments", "withdrawals", "holidays", or any 
+other words that would be useful to include in our model. 
+

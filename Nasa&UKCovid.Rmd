@@ -1,0 +1,147 @@
+---
+title: "HW01"
+author: ""
+date: "2020/10/20"
+output: html_document
+---
+
+```{r}
+# Import Package
+library(jsonlite)
+library(dplyr)
+# Set folder
+setwd("E:/UCLA Econ Course/441 Applied Data Management for Economists/HW01")
+```
+
+
+------------NASA API------------
+Comment:
+This data set contains the title(name), category and time of closed and open natural events in the latest 60 days. It could be used to measure the pattern of natural disasters to see if it can support the early warning system.
+```{r}
+
+# APIkey = "W1yK8mkv7T5nCfGREDtPoqmwIoe0XtcmgT6hds9h"  # but we do not need in this case
+
+## Call 01
+limit = 1000       # the maximum number of events returned
+days = 60          # time range
+status = "closed"  # return closed events
+URL = paste("https://eonet.sci.gsfc.nasa.gov/api/v2.1/events" , 
+            "?limit=",limit,
+            "&days=",days, 
+            "&status=", status, 
+            sep = "")
+
+query = jsonlite::fromJSON(URL)
+
+# Title
+event = as.data.frame(query$events$title)
+colnames(event)[1] = "title"
+
+# Category
+for(i in 1 : length(event$title)){
+  event$category[i] = query$events$categories[[i]]$title
+}
+
+# Time
+event$time = query$events$closed
+event$time = substr(event$time,1,regexpr("T",event$time)-1)
+
+# Type:closed/open
+event$type = "closed"
+
+## Call 02
+status = "open"  # return closed events
+URL = paste("https://eonet.sci.gsfc.nasa.gov/api/v2.1/events" , 
+            "?limit=",limit,
+            "&days=",days, 
+            "&status=", status, 
+            sep = "")
+
+query3 = jsonlite::fromJSON(URL)
+
+# Title
+event.open = as.data.frame(query3$events$title)
+colnames(event.open)[1] = "title"
+
+# Category
+for(i in 1 : length(event.open$title)){
+  event.open$category[i] = query3$events$categories[[i]]$title
+}
+
+# Time
+for(i in 1 : length(event.open$title)){
+  event.open$time[i] = query3$events$geometries[[i]]$date
+}
+event.open$time = substr(event.open$time,1,regexpr("T",event.open$time)-1)
+
+# type:closed/open
+event.open$type = "open"
+
+event.output = rbind(event, event.open)
+write.csv(event.output,"NASA.csv")
+```
+
+
+------------UK COVID-19 API------------
+Comment:
+This data set contains cumulative and daily cases and death of COVID-19 until now for each area in the UK. 
+It could be used to monitor the pandemic development of the country and reflect if the controlling measures work well.
+```{r}
+areaType = "England"
+structure = '{"date":"date","cumulative":"cumCasesBySpecimenDate","daily":"newCasesBySpecimenDate","name":"areaName"}'
+
+URL2 = paste('https://api.coronavirus.data.gov.uk/v1/data?filters=areaType=',areaType,
+             '&structure=',structure, sep = "")
+
+# Call 01
+query2 = jsonlite::fromJSON(URL2)
+
+# date
+cases = as.data.frame(query2$data$date)
+colnames(cases)[1] = "date"
+
+# cumulative and daily cases
+cases$cumulative_case = query2$data$cumulative
+cases$daily_case = query2$data$daily
+
+# region
+cases$region = query2$data$name
+
+
+areaType = "nation"
+structure2 = '{"date":"date","cumDeathsByDeathDate":"cumDeathsByDeathDate","newDeathsByDeathDate":"newDeathsByDeathDate","name":"areaName"}'
+
+URL3 = paste('https://api.coronavirus.data.gov.uk/v1/data?filters=areaType=',areaType,
+             '&structure=',structure2, sep = "")
+# Call 02
+query4 = jsonlite::fromJSON(URL3)
+
+# date
+cases.d = as.data.frame(query4$data$date)
+colnames(cases.d)[1] = "date"
+
+# cumulative and daily cases
+cases.d$cumulative_death = query4$data$cumDeathsByDeathDate
+cases.d$daily_death = query4$data$newDeathsByDeathDate
+
+# region
+cases.d$region = query4$data$name
+
+# data cleaning
+case.output = left_join(subset(cases,region == "England"),cases.d,by="date")
+case.output = case.output[,-7]
+colnames(case.output)[4] = "region"
+case.output2 = subset(cases,region != "England")
+case.output2$cumulative_death = 0
+case.output2$daily_death = 0
+output = rbind(case.output,case.output2)
+output[is.na(output)] = 0 
+output = output %>% select(date, cumulative_case, daily_case, cumulative_death, daily_death, region)
+
+
+write.csv(output,"UK_COVID19.csv")
+```
+
+
+
+

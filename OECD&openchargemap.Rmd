@@ -1,0 +1,215 @@
+---
+title: "441Homework"
+author: "Tanaporn Sriklay"
+date: "10/25/2020"
+output: pdf_document
+---
+
+```{r, echo=FALSE, warning=FALSE, message= FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=70))
+```
+
+## Load library
+
+```{r libraries, echo=FALSE, warning=FALSE, message=FALSE}
+library(jsonlite)
+library(openxlsx)
+library(dplyr)
+library(openxlsx)
+library(OECD)
+```
+
+##API Data set 1 
+Source: https://openchargemap.org
+
+This data set is the information of battery charging station in many countries.
+The country with the most electric vehicles are used in the example of coding, 
+including China, USA, Japan and UK.
+
+The data includes the general information of the provider of charging services 
+such as the address, the charging level (suggesting the charging time), and 
+the usage cost and the requirement for services (i.e. membership, public use,
+private use)
+
+Also, the data includes the information of the customer side such as the type
+of charging (i.e. power, voltage ), capability of fast-charging, connection type,
+status of charging (i.e. fail to charging? because?) and comments.
+
+#The possible questions by using the data:
+
+1. How much difference in charging infrastructure in each country? (i.e. in term
+of price, type of providers, type and quality of charging)
+
+2. Do those difference lead to the varying proportion of electric cars use 
+among countries?
+
+3. What is the determinants of location of the charging station ?
+
+#Here is the coding for loading API Data 
+```{r, warning=FALSE, message=FALSE}
+APIkey = "e67121f20c15f2fa5dc000b94fb6bdb0"
+
+#selected country
+series_id = c("US", "CN","GB", "JP")
+
+#function to create link API
+battery_series <- function(APIkey, country_id, max){
+  URL = "https://api.openchargemap.io/v3/poi/?output=json"
+  parameters = paste(
+  paste0("countrycode=", country_id), #define the seried_id
+  paste0("maxresults=",max),sep="&")#maxresults= maximum of data in each countries 
+  link = paste(URL,parameters, sep = "&")
+}
+#creating API path 
+PATH <- battery_series(APIkey,series_id, 100) 
+#Loading the API data
+datalist = list()
+for (i in series_id) {
+  n = n + 1
+  data = fromJSON(battery_series(APIkey,i, 100)) #Transform the JSON file
+  data1 = as.data.frame(data) 
+  datalist[[n]] = data1 #colect each element of data in list
+}
+#append data in the list by rows
+big_data <- bind_rows(datalist)
+```
+
+#Here is the coding for selecting the interesting variables and transformed them
+#in to dataframe
+
+```{r, warning=FALSE, message=FALSE}
+#Data about service provider
+c1 = big_data$OperatorInfo$Title #Title of provider
+#Data about the requirement of usage
+c2 = NULL
+for(i in 1: length(big_data$UsageType)) {
+  c2 <- cbind(c2, unlist(big_data$UsageType[i])) #aggregate element
+}
+colnames(c2) <- as.vector(names(big_data$UsageType))#change column name
+rownames(c2) <- c() #delete row name
+#Date of data
+c3 <- big_data$DateLastVerified
+#Price rate
+c4 <- big_data$UsageCost
+#Address of Provider
+c5_1 <- big_data$AddressInfo[,c(2,3,5,6,7,8,10,11)] # select title and address
+c5_2 <- big_data$AddressInfo$Country$ISOCode # select country name
+c5 <- cbind(c5_1,c5_2)
+
+#Data on customer side
+c6 = NULL
+
+  contype = list()
+  ID = list()
+  status = list()
+  leveID = list()
+  comment = list()
+  commenttitle = list()
+  isfast = list()
+  amp = list()
+  vol = list()
+  power = list()
+  quan = list()
+  comment2 =  list()
+for (i in 1:length(big_data$Connections)){
+  ID[[i]] = big_data$Connections[[i]]$ID
+  contype[[i]] = big_data$Connections[[i]]$ConnectionType$Title
+  status[[i]] = big_data$Connections[[i]]$StatusTypeID
+  leveID[[i]] = big_data$Connections[[i]]$LevelID
+  commenttitle[[i]] = big_data$Connections[[i]]$Level$Title
+  isfast[[i]] = big_data$Connections[[i]]$Level$IsFastChargeCapable
+  amp[[i]] = big_data$Connections[[i]]$Amps
+  vol[[i]] = big_data$Connections[[i]]$Voltage
+  power[[i]] = big_data$Connections[[i]]$PowerKW
+  quan[[i]] = big_data$Connections[[i]]$Quantity
+  comment2[[i]] =  big_data$Connections[[i]]$Comments
+}
+ID = unlist(ID)
+contype = unlist(contype)
+status = unlist(status)
+leveID = unlist(leveID)
+commenttitle = unlist(commenttitle)
+isfast = unlist(isfast)
+amp = unlist(amp)
+vol = unlist(vol)
+power = unlist(power)
+quan = unlist(quan)
+comment2 = unlist(comment2)
+c6 <- cbind(ID,contype, status, leveID,commenttitle,isfast,amp,vol,power,quan,comment2)
+rownames(c6) = c()
+#GeneralComments
+c7 = big_data$GeneralComments
+#aggregate data about provider
+totalv = cbind(c1,c2,c3,c4,c5,c7)
+#change name of colum
+names(totalv)[1] = "Provider"
+names(totalv)[7] = "Dataver"
+names(totalv)[8] = "Usagecost"
+names(totalv)[17] = "country" 
+names(totalv)[18] = "Generalcomment"
+#change c6 to data frame
+c6frame= data.frame(c6)
+c6frame %>% distinct(ID, .keep_all = TRUE)
+
+```
+
+##API Data set 2
+From OECD API wrappers
+
+OECD provide a lot of data. In this coding, I use API wrappers to get the data 
+of the original value added of exports by each regions. I plan to use this data
+in my project to answer what's determine the trade pattern and GVCs in the
+future. This value will be used to measure size of supply chains in each regions
+by industry. Also, I use Api to get the data about trade in service because
+I believe the future supply chain are developed together with services. 
+
+
+```{r, warning=FALSE, message=FALSE}
+#list of database
+dataset_list <- get_datasets()
+#search data set of interesting variable i.e. orign of value added in gross export
+search_dataset("Value Added", data = dataset_list)
+search_dataset("service", data = dataset_list)
+#Define our interested data
+dataset = "TIVA_2018_C2"
+dataset2 = "TISP"
+#Get the structure of data
+dstruc <- get_data_structure(dataset)
+str(dstruc, max.level = 1)
+#Showing the variable & dimensions
+dstruc$VAR_DESC
+#i.e. want to know the country code of exporting country
+dstruc$XCTRY
+#Filter the targeted country, 
+filter_list = list(c("WLD", "ASEAN", "EASIA", "EU15","EU28","ZNAM","ZSCA","G20"))
+#Get data given filter
+datav <- get_dataset(dataset = dataset, filter = filter_list)
+datas <- get_dataset(dataset = dataset2)
+```
+
+
+#Here is the code for exporting Excel 
+```{r, warning=FALSE, message=FALSE}
+createSpreadsheets <- function(name,r1,r2,r3,r4){
+  ## Create new workbooks
+  wb <- createWorkbook() 
+  
+  ## Create the worksheets
+  addWorksheet(wb, sheetName = "set1_Producer" )
+  addWorksheet(wb, sheetName = "set1_Consumer" )
+  addWorksheet(wb, sheetName = "set2_originofva" )
+  addWorksheet(wb, sheetName = "set2_tradeservice" )
+  ## Write the data
+  writeData(wb, "set1_Producer", r1)
+  writeData(wb, "set1_Consumer", r2)
+  writeData(wb, "set2_originofva", r3)
+  writeData(wb, "set2_tradeservice", r4)
+  
+  ## Save workbook to working directory 
+  saveWorkbook(wb, file = paste(name,".xlsx", sep=""), overwrite = TRUE)
+}
+
+## create spreadsheets b
+  createSpreadsheets("441homework",totalv,c6frame,datav,datas)
+```  

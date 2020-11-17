@@ -1,0 +1,79 @@
+---
+title: "441A_HW1"
+author: ""
+date: "2020/10/25"
+output: html_document
+---
+```{r}
+library(jsonlite)
+```
+
+1.)-------------Oil Stocks Comparison------------
+```{r}
+#This set of data contains 5 oil stocks' performances over the last 100 days.
+#It can be used to see the which stock among the 5 is performing better.
+#It can also used to see if they follow the overall trend. (If so, one could buy 1 stock which is underperforming at that day)
+#(These 5 stocks are on my spectating list)
+
+APIkey = "9UURF3ISJ7MRNKTN"
+
+myfunction = "TIME_SERIES_DAILY_ADJUSTED"
+
+outputsize = "compact"
+
+symbol <- c("XOM" , "CVX" , "OXY" , "SU" , "RRC")
+
+output <- matrix(NA, nrow = 100, ncol = 5, byrow = FALSE)
+
+colnames(output) <- symbol
+
+percent <- function(x){
+  k = x*100
+  return(as.numeric(format(round(k,2),nsmall = 2)))
+}
+
+for (j in c(1:5)){
+  URL =  paste("https://www.alphavantage.co/query" , "?function=" , myfunction , "&symbol=" , symbol[j] , "&outputsize=" , outputsize, sep   = "")
+
+  PATH = paste(URL, "&apikey=" , APIkey , sep = "" )
+
+  initialquery = jsonlite::fromJSON(PATH)
+
+  for(i in c(1:100)){
+    output[i,j] = percent((as.numeric(initialquery$`Time Series (Daily)`[[(i)]]$`5. adjusted close`)-as.numeric(initialquery$`Time Series (Daily)`[[(i)]]$`1. open`))/as.numeric(initialquery$`Time Series (Daily)`[[(i)]]$`1. open`))
+  }
+}
+
+rownames(output) <- names(initialquery$`Time Series (Daily)`)
+
+write.csv(output , file = "Oil Stocks Comparison.csv")
+```
+
+
+```{r}
+#install.packages("devtools")
+library(devtools)
+library(ROpenDota)
+#I am sorry that it is really hard to find free Apis which are available for us who are in China right now,
+#so for this one I decided to use mock Api.
+```
+
+2)-------------Hero Winrate for a Game-----------------------------
+```{r}
+#This set of data contains the hero winrate for all heroes in professional matches for a game called DOTA2
+#It can be used to decide which champion to pick in a match. For example, if I am a coach for a team, I would like to ask my team members to practice more on a hero that has higher winrate.
+
+initialquery <- ROpenDota::get_hero_stats()
+
+output <- matrix(as.numeric(initialquery$pro_win)/as.numeric(initialquery$pro_pick))
+
+#The reason for I also included number of picks is to get rid of some high or low winrates with only a few picks
+output = cbind(output , initialquery$pro_pick)
+
+colnames(output) <- c("pro_winrate" , "pro_pick")
+rownames(output) <- initialquery$localized_name
+
+output <- output[order(output[, "pro_winrate"] , decreasing = TRUE) , ]
+
+write.csv(output , file = "Dota2 Hero Winrate in Pro Matches.csv")
+```

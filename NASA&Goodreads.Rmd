@@ -1,0 +1,63 @@
+---
+title: "Problem with API"
+author: ""
+date: "2020/10/25"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r apod from NASA API}
+library(plyr)
+aaa=c()
+dateloop=for (i in 1:30)
+  {date_11=paste('2020-09-',i,sep='')
+aaa=c(aaa,date_11)}
+
+initialquery1=as.data.frame(jsonlite::fromJSON(paste('https://api.nasa.gov/planetary/apod?api_key=niqOX2DrzQRFEP4FL6x2IuEaS2HZ5tXBwiwO9X3k&date=',aaa[1],sep='')))
+
+for (i in aaa[2:30]){
+  bbb=jsonlite::fromJSON(paste('https://api.nasa.gov/planetary/apod?api_key=niqOX2DrzQRFEP4FL6x2IuEaS2HZ5tXBwiwO9X3k&date=',i,sep=''))
+  
+  initialquery1=rbind.fill(initialquery1,as.data.frame(bbb))
+}
+View(initialquery1)
+write.xlsx(initialquery1,'/Users/georgia/Desktop/API_NASA.xlsx',na='NA')
+```
+
+The database built on the NASA Astronomy Picture of the Day can record the everyday status of planets. The information about author and the planet can keep track of the latest discovery.
+
+```{r goodreads-parameters}
+library(XML)
+library(stringr)
+APIkey='131QDlwDG6PokD0EKQqUA'
+title=c("Harry Potter and the Sorcerer's Stone",
+        "Harry Potter and the Chamber of Secrets",
+        "Harry Potter and the Prisoner of Azkaban",
+        "Harry Potter and the Goblet of Fire",
+        "Harry Potter and the Order of the Phoenix",
+        "Harry Potter and the Half-Blood Prince",
+        "Harry Potter and the Deathly Hallows")
+APIkey='131QDlwDG6PokD0EKQqUA'
+URL='https://www.goodreads.com/book/title.xml'
+reviewPATH=paste(URL,'?key=',APIkey,'&title=',str_replace_all(title,' ','+'),sep='')
+reviewPATH
+#use NoCodeAPI to change XML into JSON files.
+```
+
+```{r build database}
+for (i in 1:7){assign(paste('HPjson_',i,sep=''),jsonlite::read_json(paste('hp',i,'.json',sep='')))}
+HPbookinfo_1=as.data.frame(HPjson_1$GoodreadsResponse$book)
+HPbookinfo_2=as.data.frame(HPjson_2$GoodreadsResponse$book)
+HPbookinfo_3=as.data.frame(HPjson_3$GoodreadsResponse$book)
+HPbookinfo_4=as.data.frame(HPjson_4$GoodreadsResponse$book)
+HPbookinfo_5=as.data.frame(HPjson_5$GoodreadsResponse$book)
+HPbookinfo_6=as.data.frame(HPjson_6$GoodreadsResponse$book)
+HPbookinfo_7=as.data.frame(HPjson_7$GoodreadsResponse$book)
+df=rbind.fill(HPbookinfo_1,HPbookinfo_2,HPbookinfo_3,HPbookinfo_4,HPbookinfo_5,HPbookinfo_6,HPbookinfo_7)
+write.xlsx(df,'Book Info of Harry Potter Series.xlsx')
+> 
+```
+The ratings and frequency of being on the recommendation list can be index of how popular the book is or what the most popular book of the series is.

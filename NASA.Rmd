@@ -1,0 +1,151 @@
+---
+title: ""
+author: "Shuangfei Li"
+date: "2020/10/21"
+output: html_document
+---
+
+HW1: Two datasets created form API Data.
+
+Files to submit:
+
+(1) 2 Structured Datasets in csv, xls, etc. format.
+(2) 1 RMD file with your code for calling the APIs and creation of the dataset.
+(3) Please comment 1-2 sentences for each dataset describing the data and a potential question it could be used to answer.
+    I.E ( This dataset contains the percent of articles that mention gold for every given month back to 1971. It could be used to measure public sentiment on gold to test if sentiment has any baring on price changes. )
+
+Full points will be given for datasets that use more than one API call to create at least a 2 column dataset. 
+
+Extra credit (5% for each dataset) will be given if you use an API not used as an example in class.
+
+```{r}
+#Import Package
+library(jsonlite)
+getwd()
+```
+
+Case 1 - F.R.E.D
+
+------------F.R.E.D/series/observations API------------
+```{r}
+#0) Get the observations or data values for an economic data series.
+
+#https://api.stlouisfed.org/fred/series/observations?series_id=GNPCA&api_key=abcdefghijklmnopqrstuvwxyz123456&file_type=json
+
+APIkey = '225f938b506ef17b2303966bfbaceacd'
+series_id = "GNPCA" 
+
+URL = paste("https://api.stlouisfed.org/fred/series/observations?" , "series_id=", series_id , "&" , sep = "")
+PATH = paste(URL, "api_key=" , APIkey, "&file_type=json",sep ="")
+initialquery = jsonlite::fromJSON(PATH)
+
+#Get the observation values
+series = initialquery$observations
+
+df = as.data.frame(series)
+df_series <- data.frame(Date = df$date, Value = df$value)
+print(df_series)
+
+#export csv file.
+write.table(df_series,"Fred_GNPCA.csv",sep = ",", row.names=FALSE)
+```
+This dataset contains the Annual Real Gross National Product (GNPCA) of the U.S. from 1929 to 2019. It can be used to measure the value of all goods and services made by the United States residents and businesses. 
+It also can be use to calculate GNP PER CAPITA when comparing the economic conditions of different countries.
+
+```{r}
+#1) Application:Plot the line graph of GNPCA
+#x
+dates = toString(df$date)
+years = substr(df$date,0,4)
+
+#y
+values = as.numeric(df$value)
+
+plot(years, values,main = "Real Gross National Product (GNPCA)", type="l")
+```
+
+
+Case 2 - NASA
+
+------------NASA/The Earth Observatory Natural Event Tracker------------
+
+The Earth Observatory Natural Event Tracker (EONET) provides a curated source of continuously updated natural event metadata, providing a service that links those natural events to thematically-related web service-enabled image sources, etc. 
+```{r}
+#1) Return all the natural events happned around the world.
+
+APIkey = 'OIinrWn7WsgLoMBLj8vZ7Yzxg1ugRWUUNnayWxxc'
+URL = "https://eonet.sci.gsfc.nasa.gov/api/v2.1/events?"
+PATH = paste(URL, "api_key=" , APIkey, "&file_type=json",sep ="")
+initialquery = jsonlite::fromJSON(PATH)
+
+df = as.data.frame(initialquery$events)
+df_1 <- data.frame(initialquery$events$id, initialquery$events$title)
+df_1
+```
+
+
+```{r}
+#2) Track the recent (x) events happened within the past (y) days and are still active events(status = open).
+
+APIkey = 'OIinrWn7WsgLoMBLj8vZ7Yzxg1ugRWUUNnayWxxc'
+article_num = "5" 
+day = "20"
+status = "open"
+
+URL = paste("https://eonet.sci.gsfc.nasa.gov/api/v2.1/events?" , "limit=", article_num , "&" , "day=", day,"status=" , status, sep = "")
+PATH = paste(URL, "api_key=" , APIkey, "&file_type=json",sep ="")
+initialquery = jsonlite::fromJSON(PATH)
+
+df = as.data.frame(initialquery$events)
+df
+```
+
+```{r}
+#Output the dataset
+
+#Create a dataframe with three cols (ID, Title, Source_Link)
+output <- data.frame(matrix(ncol = 3, nrow = 0))
+colnames(output) <- c("ID", "Title", "Source_Link")
+temp <- data.frame(ID = df$id, Title =  df$title, Source_Link = df$link)
+output <- rbind(output,temp)
+output
+
+#Output a .csv file
+write.table(output,"NASA_EONET.csv",sep = ",", row.names=FALSE)
+```
+
+This dataset contains the most recent 5 natural events happened in past 20 days around the world. It can be used to measure how many times a specific natural events happened in the past several days.
+
+```{r}
+#3) Figure out how many times "Wildfire" happened in the past several days.
+
+output <- data.frame(matrix(ncol = 2, nrow = 0))
+colnames(output) <- c("Time_Slot", "Num_Events")
+
+#https://eonet.sci.gsfc.nasa.gov/api/v2.1/events?days=20
+
+# Create a function that pulls the number of events
+get_num_events <- function(days, words, APIkey){
+  URL = paste("https://eonet.sci.gsfc.nasa.gov/api/v2.1/events?", "days=", days, sep = "")
+  PATH = paste(URL, "api_key=" , APIkey, "&file_type=json",sep ="")
+  initialquery = jsonlite::fromJSON(PATH)
+  initialquery
+  
+  df = as.data.frame(initialquery$events)
+  
+  booleans = grepl(words, df$title, fixed=TRUE)
+  mentions = sum(booleans)
+  
+  temp <- data.frame(Time_Slot = days, Num_Events = mentions)
+  return(temp)
+}
+
+words ="Wildfire"
+days = "10"
+APIkey = "OIinrWn7WsgLoMBLj8vZ7Yzxg1ugRWUUNnayWxxc"
+
+temp = get_num_events(days, words, APIkey)
+output = rbind(output,temp)
+output
+```
+The table above indicates that in the past 10 days, Wildfire happened 68 times in the world.

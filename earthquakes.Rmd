@@ -1,0 +1,76 @@
+---
+title: "Econ 441 HW#1"
+author: ""
+date: "10/25/2020"
+fontfamily: mathpazo
+output:
+  pdf_document:
+    toc: true
+  fig_caption: yes
+  highlight: haddock
+  number_sections: true
+  df_print: paged
+fontsize: 10.5pt
+editor_options:
+chunk_output_type: console
+---
+```{r, echo=FALSE, warning=FALSE, message= FALSE}
+library(jsonlite)
+```
+
+##############
+# I. API #1
+##############
+```{r}
+format = "geojson"
+starttime = "2010-01-01"
+endtime = "2010-01-02"
+
+URL = paste("https://earthquake.usgs.gov/fdsnws/event/1/query?", "format=", format, "&", "starttime=", starttime, "&", "endtime=", endtime, sep = "")
+
+PATH = paste(URL, sep = "")
+initialquery = jsonlite::fromJSON(PATH)
+iq = (initialquery$features$properties)
+
+df_eq = data.frame(iq)
+df = df_eq[,1:2] #saving columns we care about to new data frame
+head(df)
+
+```
+
+```{r}
+#this is an example of how we could use the API to answer a question of which places in January 2010 had earthquakes with a magnitude greater than 4. 
+high_mag <- data.frame(iq$place[iq$mag > 4])
+high_mag #data frame containing list of places with earthquakes greater than a magnitude of 4
+```
+Remark: This data set contains a list of earthquakes that occurred across the world during January 2010, and gives their location and magnitude. A question this code could answer would be how many earthquakes in that time span had a magnitude greater than 4. In my code I show an example of how you could do that with this data set. 
+
+##############
+# II. API #2
+##############
+```{r}
+APIkey = "e67121f20c15f2fa5dc000b94fb6bdb0"
+series_id = "GDPC1"   #Real GDP
+observation_start = "1950-01-01"
+
+URL = "https://api.stlouisfed.org/fred/series/observations"
+  
+parameters = paste(
+    "?series_id=",series_id,
+    "&api_key=", APIkey,
+    "&file_type=json",
+    "&observation_start=",observation_start,
+    sep = "")
+PATH = paste0(URL, parameters)
+  
+initialquery = fromJSON(PATH)
+df = initialquery$observations
+
+df = df[,3:4] #Creates data set with all rows but only date and value columns
+head(df)
+
+```
+Remark: We could use this API call of the United States Real Gross Domestic Product to examine recessionary periods to see how Real GDP fluctuates given those times of economic instability. I found it especially insightful in this case as we could write a function to pull out only the years or months where GDP didn't increase relative to the previous time period. This would allow us to immediately pull out all the recessionary periods quickly because we know that Real GDP typically increases from one period to another in the United States. Therefore, the question this could be answering is identifying where recessions occur and how did they impact Real GDP in the United States. 
+
+
+

@@ -1,0 +1,111 @@
+---
+title: "441a HW1"
+author: ""
+date: "10/22/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+getwd()
+library(jsonlite)
+```
+
+# 1. Dataset 1
+This dataset gives us the real median household income in the United States and allows us to 
+see how it has progressed over time.
+Question: How much has median household income grown in the past century?
+```{r}
+APIkey = "318785ae75448b5f1b3788a9690b3417"
+series_id = "MEHOINUSA672N"
+realtime_start = "1980-01-01"
+
+URL = "https://api.stlouisfed.org/fred/series/observations"
+
+parameters = paste("?series_id=", series_id, 
+"&realtime_start=",realtime_start,
+"&api_key=",APIkey,
+"&file_type=json",
+sep="")
+PATH = paste0(URL, parameters)
+#PATH
+query = jsonlite::fromJSON(PATH)
+MedHIncome = query$observations
+#rownames(MedHIncome) <- MedHIncome$date
+
+MedHIncome = MedHIncome[c("date", "value")]
+MedHIncome$value <- as.numeric(MedHIncome$value)
+
+write.csv(MedHIncome,"C:/Users/Carlos Hernandez/Documents/R\\MedHouseIncome.csv", row.names = TRUE)
+```
+
+
+
+
+
+
+# Dataset 2:
+This Data comes from sportsdata.io and details stats where we can analyze player stats during the 2016 season.
+The roundid indicates a specific league/ competition. Initialquerys is my dataset and at the end I narrow the data
+to see the number of minutes each player plays.
+
+Question: The correlation between minutes played and fantasy points? What effect does goals scored have on this?
+
+https://api.sportsdata.io/v3/soccer/stats/json/PlayerSeasonStats/1?key=ae98d45adaff42378acf9496227c1158
+```{r}
+APIkey = "ae98d45adaff42378acf9496227c1158"
+roundid = 7
+
+URL = "https://api.sportsdata.io/v3/soccer/stats/json/PlayerSeasonStats/"
+
+parameters = paste(roundid, "?key=", APIkey,
+sep="")
+
+PATH = paste0(URL, parameters)
+#PATH
+initialquerys = jsonlite::fromJSON(PATH)
+
+df = initialquerys
+df_focus = df[c("Name", "Team","Minutes","FantasyPoints", "Goals", "Shots")]
+#df_focus
+
+
+
+write.csv(df_focus,"C:/Users/Carlos Hernandez/Documents/R\\SoccerAPIrDataset.csv", row.names = TRUE)
+```
+
+# Dataset 3:
+This data from alphavantage.co shows a time series of monthly changes in currency exchange 
+and can provide us with an understanding of changes in the currencies we select.
+Potential Question: In what direction is the currency exchange of Euro and USD heading?
+
+**I did not finish this
+
+https://www.alphavantage.co/query?function=FX_MONTHLY&from_symbol=EUR&to_symbol=USD&apikey=demo
+```{r}
+APIkey = "41D7AWDTZ15E3Q78"
+Function = "FX_MONTHLY"
+from_symbol = "EUR"
+to_symbol = "USD"
+size = "compact" #shows last 100 data points for equity. the other option is "full"
+
+URL2 = "https://www.alphavantage.co/query?"
+
+parameters2 = paste("function=", Function,
+  "&from_symbol=",from_symbol,
+  "&to_symbol=", to_symbol,
+  "&outputsize=", size,
+  "&apikey=", APIkey,
+  sep="")
+
+PATH2 = paste0(URL2, parameters2)
+#PATH2
+initialquery2 = jsonlite::fromJSON(PATH2)
+TimeSMonthly = initialquery2$`Time Series FX (Monthly)`
+#as.data.frame(TimeSMonthly)
+```
+
+

@@ -1,0 +1,109 @@
+---
+title: "ECON441A - Homework1"
+author: ""
+date: "10/20/2020"
+output: pdf_document
+---
+
+```{r}
+#libraries
+library(jsonlite)
+```
+
+*DATASET 1*  
+Daily Currency Exchange Rate from Alpha Vantage API.  
+Daily stock price from Marketstack API.
+```{r}
+#set up parameters
+  api_key_AV <- '1D0CULUFYK3KIO0M'
+  api_key_MS <- '62ef28a57f2f1270624bcb96b59e592f'
+  from_curr <- 'USD'
+  to_curr <- 'GBP'
+  stock <- 'BARC.XLON'
+
+#create URL
+  URL1 <- paste("https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=",from_curr,
+             "&to_symbol=",to_curr,"&outputsize=compact&apikey=",api_key_AV, sep = "")
+  URL2 <- paste("http://api.marketstack.com/v1/eod?access_key=",api_key_MS,
+                "&symbols=",stock, sep="")
+#get json data
+  q_curr <- fromJSON(URL1)
+  q_stock <- fromJSON(URL2)
+
+#formatting into data frame
+  x<-q_curr$`Time Series FX (Daily)`
+    date_col<-names(x)
+    data_col<-matrix(unlist(x),ncol=4)
+    df1<-data.frame(date_col,data_col)
+    col_names <- gsub(".* ",".",names(unlist(unlist(x[1]))))
+    names(df1)<-c('date',col_names)
+    head(df1)
+  
+  x2 <- unlist(q_stock[2],FALSE)
+    df2 <- data.frame(x2)
+    df2<- df2[,c(length(df2), 1:length(df2)-1)]
+    col_names2<- gsub("^.*\\.","",names(df2))
+    names(df2)<-col_names2
+    df2[,1]<- substr(df2[,1],1,10)
+    head(df2)
+
+#merge 2 queries
+  output1 <- merge(df1[,c(1,5)],df2[,c(1,5)])
+  names(output1)<-c('date','rate','price')
+  head(output1)
+  
+#export to .csv
+  save_file <- paste(stock,'VS', from_curr,'-', to_curr ,Sys.Date(),".csv")
+  write.csv(output1, save_file)
+
+```
+The data includes a column of daily close price of a bank (BarClays) in London stock market and a column of daily close exchange rate between GBP and USD. The data can be used to addressed the correlation between the expected performance of company in London Stock Exchange reflected in stock price to the currency performance.
+  
+\newpage 
+*DATASET 2*  
+GDP Growth data from World Bank using API wrapper from WDI library.  
+Article data from New York Times API.
+```{r}
+library(WDI)
+country <- 'US'
+year_from <- 1990
+year_to <- 2019
+word <- "recession"
+api_key_nyt <- 'tlgdxcq6TBMOO1cAnSBeZnczRyNTDM6X'
+
+q_gdp <- WDI(country, indicator = "NY.GDP.MKTP.KD.ZG", start = year_from, end = year_to)
+head(q_gdp)
+
+q_article <- data.frame(matrix(ncol = 2, nrow = 0))
+colnames(q_article) <- c("year", "Articles")
+
+count_nyt <- function(year,month, word, APIkey){
+  URL3 = paste("https://api.nytimes.com/svc/archive/v1/", year,"/", month,".json?api-key=",APIkey, sep = "")
+  jdata <- fromJSON(URL3)
+  df3 = as.data.frame(jdata$response$docs)
+  
+  booleans = grepl(word, df3$lead_paragraph, fixed=TRUE)
+  mentions = sum(booleans)
+  
+  return(mentions)
+}
+
+for (year_i in year_from:year_to) {
+  count <- 0
+  for (month_i in 1:12) {
+    count <- count + count_nyt(year_i,month_i,word,api_key_nyt)
+    }
+  temp <- data.frame(year = year_i, Articles = count)
+  q_article <- rbind(q_article,temp)
+}
+head(q_article)
+
+output2 <-merge(q_gdp[,c(4,3)],q_article[,c(1,2)])
+names(output2) <- c('Year', 'GDP Growth', 'Mentions')
+
+head(output2)
+save_file2 <- paste("GDP Growth VS Recession counts",Sys.Date(),".csv")
+write.csv(output2,save_file2)
+
+```
+The data includes US annual GDP growth from World Bank records in parallel to the counts of articles mentioning "Recession" in the respective year. The data can be used to analyze the awareness of economic situation throughout the years and how well recession can be detected early in the year.

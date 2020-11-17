@@ -1,0 +1,164 @@
+---
+title: 'HW 1'
+author: ""
+fontfamily: mathpazo
+output:
+  pdf_document:
+    toc: true
+  fig_caption: yes
+  highlight: haddock
+  number_sections: true
+  df_print: paged
+fontsize: 10.5pt
+editor_options:
+chunk_output_type: console
+---
+```{r}
+library(jsonlite)
+library(janitor)
+library(writexl)
+```
+
+```{r echo=TRUE}
+#This code creates a dataset with 2 sheets, one of which is a huge dataset of the monthly
+#exports to china dating back to january 2013, the other is the monthly imports from china
+#dating back to 2013. The benefits of this data are clear, as they could easily be used to
+#perform complex analysis on the trade/war trade surplus/deficit, etc. etc., with china. 
+#Other countries could be grabbed by changing the country code as well. 
+
+
+
+china_data = function(url){
+
+initialquery = fromJSON(url)
+
+return(initialquery)
+
+}
+
+my_key = "&key=34e40301bda77077e24c859c6c6c0b721ad73fc7"
+```
+
+
+
+```{r echo=TRUE}
+#get exports to china
+
+end_use = "hs?get=E_COMMODITY,ALL_VAL_MO"
+url = "https://api.census.gov/data/timeseries/intltrade/exports/"
+PATH = paste(url, end_use, my_key, "&time==from+2013-01", "&COMM_LVL=HS6", "&CTY_CODE=5700", sep="")
+
+df1 = china_data(PATH)
+
+```
+
+```{r echo=TRUE}
+#cleaning
+df1 = janitor::row_to_names(df1, 1)
+df1 = as.data.frame(df1)
+
+df1$E_COMMODITY = as.numeric(df1$E_COMMODITY)
+df1$ALL_VAL_MO = as.numeric(df1$ALL_VAL_MO)
+```
+
+```{r echo=TRUE}
+#get imports from china
+
+end_use2 = "hs?get=I_COMMODITY,GEN_VAL_MO"
+url2 = "https://api.census.gov/data/timeseries/intltrade/imports/"
+
+#PATH2 = paste0(url2, end_use2, "&time=from+2013-01", "$COMM_LVL=HS6", "&CTY_CODE=5700", my_key, sep="")
+
+#I hardcoded the url below because when I used PATH2 (commented out above) I get a bad call
+#400 error. Both strings PATH2 and PATH22 are 176 characters long and appear to return the
+#exact same string, though it does not work with PATH2, and according to identical(PATH2, PATH22) 
+#they are not the same. I cannot figure out the difference.
+
+PATH22 = "https://api.census.gov/data/timeseries/intltrade/imports/hs?get=I_COMMODITY,GEN_VAL_MO&time=from+2013-01&COMM_LVL=HS6&CTY_CODE=5700&key=34e40301bda77077e24c859c6c6c0b721ad73fc7"
+
+
+df2 = china_data(PATH22)
+```
+
+```{r echp}
+#cleaning
+df2 = janitor::row_to_names(df2, 1)
+df2 = as.data.frame(df2)
+
+df2$I_COMMODITY = as.numeric(df2$I_COMMODITY)
+df2$GEN_VAL_MO = as.numeric(df2$GEN_VAL_MO)
+
+```
+
+```{r}
+dftot = list(df1, df2)
+
+write_xlsx(dftot,"china_data.xlsx")
+
+```
+
+
+#This code creates a database from the anime website "MyAnimeList." Users on this website record what animes they have completed, as well as series they are currently watching, were watching but are on hold while watching something else, what shows they have dropped, etc.. They also input a score from 1-10 for every show they have watched or are watching. This code allows the user to aggregate a database of whatever anime shows they would like, that includes the number of people who have it listed as completed, on-hold, plan to watch, etc, as well as the raw number of people who scored it each rank from 1 to 10 as well as the percentage of voters who ranked it at each level from 1-10. The dataset also includes data on length of episodes, number of episodes, producer, when the show aired, etc. Television companies could use this data set to explore whether certain studios are associated with higher scored and more watched anime's, as well as potential correlations between number of episodes and average score/number of views, length of episode and score/views, etc. etc., in order to help determine what types of future shows they should produce, optimal length, etc.
+
+
+
+
+```{r}
+#APIkey = "e67121f20c15f2fa5dc000b94fb6bdb0"
+reference = "anime"
+id = "457"  #each anime in the database has an associated ID number
+request = "stats"
+parameter = ""
+
+jikan_get <- function(reference = "anime", id = "", request = "", parameter = ""){
+  URL = "https://api.jikan.moe/v3/"
+  
+  #/anime/{id}(/request)
+  
+  parameters = paste(
+    reference, "/", id, "/", request, 
+    sep = ""
+    )
+  
+  PATH = paste0(URL, parameters)
+  
+  print(PATH)
+  
+  initialquery = fromJSON(PATH)
+
+  return(initialquery)
+}
+
+```
+
+
+#for loop goes through each anime in the specified range (100 to 103 merely easy example range) and combines them into a 
+#data set containing their name and a lot of data  
+
+```{r}
+
+#u = jikan_get(reference, id, "", parameter)
+
+data = data.frame()
+
+for(i in 100:103){
+  
+name = jikan_get(reference, i, "")
+p = jikan_get(reference, i, request)
+
+namehold = data.frame(name$title)
+studhold = data.frame(name$studios)
+premhold = data.frame(name$premiered)
+durhold = data.frame(name$duration)
+ephold = data.frame(name$episodes)
+
+q = as.data.frame(p)
+q = cbind(namehold, studhold, premhold, durhold, ephold, q)
+
+data = rbind(data,q)
+}
+```
+
+```{r}
+write_xlsx(data,"anime.xlsx")
+```

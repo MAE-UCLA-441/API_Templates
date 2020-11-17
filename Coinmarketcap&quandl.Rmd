@@ -1,0 +1,85 @@
+---
+title: "441a_HW1"
+author: ""
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1.crypto_currencies.csv
+This dataset includes info about the trending cryptocurrency projects in the market,
+It could be used to evaluate the general condition of the most recent coin market.
+
+I was planning to gather historical data of the quotes of each project, 
+so as to analyze how changes in financial market affect the cryptocurrency market, 
+but the free version doesn't allow access to historical quotes. 
+I will keep on looking for other sources.
+
+```{R}
+##This function returns current cryptocurrency market info in a dataframe
+CMC_get_listing <- function(API_key,start = 1,fiat = "USD",limit = 5000){
+  #start=1&limit=5000&convert=USD
+  Parameters = paste0(
+    "start=",start,
+    "&limit=",limit,
+    "&convert=",fiat
+  )
+  
+  URL = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?"
+  Path = paste0(URL,Parameters,"&CMC_PRO_API_KEY=",API_key)
+  initialquery = jsonlite::fromJSON(Path)
+  
+  #this includes basic info of the cryptocurrency projects and data frames
+  df1 = data.frame(initialquery$data) 
+  #this data frame includes the price, voulume, mkt cap of each cryptocurrency in USD
+  df2 = data.frame(initialquery$data$quote$USD)
+  crypto_currencies = cbind(df1[c("name","symbol")],df2[c("price","volume_24h","market_cap")])
+  return(crypto_currencies)
+}
+```
+
+
+```{R}
+#call function, write to csv
+crypto_currencies = CMC_get_listing(API_key = "496cdd8f-3b52-4296-b467-fc6617012118")
+write.csv(crypto_currencies, "crypto_currencies.csv")
+```
+
+
+2. nasdaq_100.csv
+This dataset includes the historical data of nasdaq_100, which could be used to 
+analyze the overall behavior of the major industry groups.
+
+Here's a description of the data base:
+"Over 35,000 global indexes published by NASDAQ OMX including Global Equity, Fixed Income, Dividend, Green, Nordic, Sharia and more. Daily data."
+
+and the specific dataset:
+"The NASDAQ-100 Index includes 100 of the largest domestic and international non-financial companies listed on The NASDAQ Stock Market based on market capitalization. The Index reflects companies across major industry groups including computer hardware and software, telecommunications, retail/wholesale trade and biotechnology. It does not contain securities of financial companies including investment companies."(https://indexes.nasdaqomx.com/Index/Overview/NDX)
+
+
+```{R}
+## This function returns financial market data in a dataframe
+library(plyr)
+get_Nasdaq_100 <- function(API_key){
+  Quandl_db = "NASDAQOMX" #database name
+  dataset = "/NDX" #dataset within database
+  URL = "https://www.quandl.com/api/v3/datasets/"
+  Path = paste0(URL,Quandl_db,dataset,"/data.json?api_key=",API_key)
+  
+  query = jsonlite::fromJSON(Path)
+  nasdaq_100 = query$dataset_data$data[,1:2]
+  names = c("date","index_value")
+  colnames(nasdaq_100) <- names
+  return(nasdaq_100)
+}
+```
+
+
+```{R}
+#call function, write to csv
+API_key = "rw4g3B3zCDzzb-yyrKeQ"
+nasdaq_100 = get_Nasdaq_100(API_key)
+write.csv(nasdaq_100,file = "nasdaq_100.csv")
+```

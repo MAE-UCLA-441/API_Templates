@@ -1,0 +1,58 @@
+---
+title: "BEA API"
+author: ""
+date: "22/10/2020"
+output: html_document
+---
+#ENJOY THE PACKAGE
+
+```{r}
+library(httr)
+library(jsonlite)
+library(dplyr)
+```
+
+# 1. The Bureau of Economic Analysis (BEA) API - US GDP
+```{r}
+APIkey = "11CBED1B-CD63-4F38-833B-74B71DDE4D1A"
+setname = "NIPA"
+tablename = "T10101" # which holds GDP data
+freq = "Q" # for quarterly
+BEAPATH = paste("https://apps.bea.gov/api/data/?&UserID=", APIkey, "&method=GetData&DataSetName=", setname, "&TableName=", tablename, "&Frequency=", freq, "&Year=ALL&ResultFormat=JSON", sep = "")
+
+BEAdata <- fromJSON(BEAPATH)
+str(BEAdata)
+
+BEAdf <- as.data.frame(BEAdata$BEAAPI$Results$Data)
+colnames(BEAdf)
+head(BEAdf)
+
+BEAfinal <- select(BEAdf, LineDescription, TimePeriod, SeriesCode, DataValue)
+head(BEAfinal)
+
+write.csv(BEAfinal, "US Quarterly GDP.csv")
+```
+**Comment: This dataset contains quarterly GDP growth rates, also indicated by the sub-accounts. It could be used to measure the damage of an economic crisis (in 2008, for instance). It could also be used to detect a pattern for each quarter. For example, we can examine if Q4 GDP is higher than other quarters because of the bigger holiday season.**
+
+
+# 2. World Health Organization (WHO) API - Life expectancy
+```{r}
+indicator = "WHOSIS_000001" #Life expectancy at birth
+WHOPATH = paste("https://ghoapi.azureedge.net/api/", indicator, sep = "")
+
+WHOdata <- fromJSON(WHOPATH)
+str(WHOdata)
+names(WHOdata)
+
+WHOdf <- as.data.frame(WHOdata$value)
+colnames(WHOdf)
+head(WHOdf)
+
+WHOfinal <- select(WHOdf, Id, SpatialDim, TimeDim, Dim1, Value)
+colnames(WHOfinal) <- c("Id", "Contry", "Year", "Gender", "Life expectancy at birth")
+head(WHOfinal)
+
+write.csv(WHOfinal, "Life Expectancy at Birth.csv")
+```
+**Comment: This dataset contains life expectancies at birth, indicated by country, year of birth and gender. We can measure the improvement of life expectancy for each country or region and compare them with the economic growth rate.**
+

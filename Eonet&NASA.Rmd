@@ -1,0 +1,174 @@
+---
+title: "Homework1"
+author: ""
+date: "2020/10/18"
+output: html_document
+---
+
+```{r}
+library(jsonlite)
+library(dplyr)
+library(ggplot2)
+rm(list=ls(all=TRUE))
+```
+
+##############
+# I. Corn Price
+##############
+
+##1) Get maize price
+
+```{r}
+APIkey = "cc85e79964edd787615405e0fdf59686"
+corn_id = "PMAIZMTUSDM"
+start_date = "2011-10-01"
+
+get_fred_series = function(APIkey, series_id, start_date){
+  URL = "https://api.stlouisfed.org/fred/series/observations"
+  parameters = paste("?series_id=", series_id,
+                     "&api_key=", APIkey,
+                     "&file_type=json",
+                     "&observation_start=", start_date,
+                     sep = "")
+  PATH = paste(URL, parameters, sep="")
+  initialquerry = jsonlite::fromJSON(PATH)
+  df = as.data.frame(initialquerry$observations)
+  return(df)
+}
+
+maize_df = get_fred_series(APIkey,corn_id,start_date)
+maize_price = maize_df[c('value')]
+rownames(maize_price) = maize_df$date
+colnames(maize_price) = 'maize_p'
+maize_price$maize_p = as.numeric(maize_price$maize_p)
+```
+
+##2) Get ethanol price in US from FRED
+
+```{r}
+APIkey = "cc85e79964edd787615405e0fdf59686"
+ethanol_id = "WPU06140341"
+start_date = "2011-10-01"
+
+ethanol_df = get_fred_series(APIkey,ethanol_id,start_date)
+ethanol_price = ethanol_df[c('value')]
+rownames(ethanol_price) = ethanol_df$date
+colnames(ethanol_price) = 'eth_p'
+ethanol_price$eth_p = as.numeric(ethanol_price$eth_p)
+```
+
+##3) Combine these two as a dataset
+```{r}
+### dataset1:
+corn_eth_data = cbind(ethanol_price, maize_price)
+#write.table(corn_eth_data,"dataset1.csv",row.names=TRUE,col.names=TRUE,sep=",")
+```
+
+
+Recently, world corn price increases a lot. In China, corn prices hit a four-year high. One of the main reasons is that the industrial demand for corn increases, mainly for Alcohol and animal feeds production.
+
+Through the above codes, we can get monthly maize price and ethanol price in US in recent 10 years. And we will be able to find out the relationship between corn price and one of its product ethanol's price to study reasons of the increase in corn price.
+
+##############
+# II.Solar Flare
+##############
+
+##1) Get Solar Flare data
+
+```{r}
+
+#API grabbing#
+
+APIkey2 = "SRfmkgaBsm3HBkxniIGoGICKnAjuNsf4InbDwnE7"
+start_date2 = '2017-01-01'
+end_data2 = '2017-10-23'
+URL = "https://api.nasa.gov/DONKI/FLR"
+PATH = paste(URL, '?startDate=', start_date2, '&endDate=', end_data2, '&api_key=', APIkey2, sep="")
+init_Solar_Flare = fromJSON(PATH)
+
+
+#data.frame transformation#
+
+Solar_Flare = data.frame(init_Solar_Flare$peakTime,init_Solar_Flare$classType)
+colnames(Solar_Flare)=c('peakTime','classType')
+Solar_Flare$peakTime=substr(Solar_Flare$peakTime,6,10)
+
+Solar_Flare$intensity = Solar_Flare$classType
+for(i in 1:length(Solar_Flare$peakTime)){
+  Solar_Flare[i,3]=gsub('A','1',Solar_Flare[i,3])
+  Solar_Flare[i,3]=gsub('B','2',Solar_Flare[i,3])
+  Solar_Flare[i,3]=gsub('C','3',Solar_Flare[i,3])
+  Solar_Flare[i,3]=gsub('M','4',Solar_Flare[i,3])
+  Solar_Flare[i,3]=gsub('X','5',Solar_Flare[i,3])
+}
+Solar_Flare$intensity=as.numeric(Solar_Flare$intensity)
+
+```
+
+##2) Get Earth Natural Events data
+
+```{r}
+
+URL2 = "https://eonet.sci.gsfc.nasa.gov/api/v2.1/events?days=100&source=InciWeb&status=close"
+init_Natural_Events = fromJSON(URL2)
+
+init_description = as.data.frame(init_Natural_Events$events)
+df_date = data.frame(date=1:length(init_description$title))
+for(i in 1:length(init_description$title)){
+  df_date[i,1]=init_description$geometries[[i]][1][1,]
+}
+df_date$date=substr(df_date$date,1,10)
+Natural_Events = data.frame(df_date$date,init_description$title)
+colnames(Natural_Events)=c('date','title')
+Natural_Events$date=substr(Natural_Events$date,6,10)
+
+Ev_count=
+  Natural_Events%>%
+  count(date,name='Ev_counts')
+  
+```
+
+##3) df manipulating
+```{r}
+Solar_Flare=rename(Solar_Flare,date=peakTime)
+Solar_Earth = merge(Solar_Flare,Ev_count,all=TRUE)
+
+###dataset2:
+  
+Solar_Earth=dplyr::arrange(Solar_Earth,date)
+for(i in 1:length(Solar_Earth$date)){
+  if(is.na(Solar_Earth[i,4])){Solar_Earth[i,4]=0}
+  if(is.na(Solar_Earth[i,3])){Solar_Earth[i,3]=0}
+}
+
+#write.table(Solar_Earth,"dataset2.csv",row.names=FALSE,col.names=TRUE,sep=",")
+
+```
+
+##4) Solar Flare & Natural Events plot 
+
+```{r}
+
+
+ggplot(Solar_Earth,aes(x=date))+
+  
+  geom_point(aes(y=intensity),color="pink")+
+  geom_point(aes(y=Ev_counts*10), color="#69b3a2")+
+  geom_line(aes(y=intensity,group=1) ,size=0.1,colour='grey')+
+  geom_line(aes(y=Ev_counts*10,group=1) ,size=0.1,colour='grey')+
+  
+  scale_x_discrete(breaks=c("01"))+
+  scale_y_continuous(
+    name = "Solar Flare",
+    sec.axis = sec_axis(trans=~./10, name="Natural Events")
+  )
+
+
+```
+
+This dataset contains natural disasters happened on earth in the last three months, as well as Solar Flare happened at this time in 2017, since relevant data in 2020 is nor available.
+It can be used to analyze the impact of Solar Flare on Natural Events happened on earth during certain period of time.
+
+
+
+

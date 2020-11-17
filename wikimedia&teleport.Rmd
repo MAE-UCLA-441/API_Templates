@@ -1,0 +1,94 @@
+---
+title: "441 HW1"
+author: ""
+date: "10/24/2020"
+output: html_document
+---
+```{r}
+library(jsonlite)
+#install.packages("httr")
+library(httr)
+#install.packages("lubridate")
+library(lubridate)
+library(stringr)
+library(ggplot2)
+```
+
+1) Dataset1: 
+```{r}
+
+wiki_num_view <- function(page,start_day,end_day){
+  URL = paste("https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/all-agents", page, "daily",start_day,end_day, sep = "/")
+  initial = jsonlite::fromJSON(URL)
+  df = initial$items
+  
+  df = df[c("article","timestamp","views")]
+  df$timestamp = ymd(str_sub(df$timestamp,1,8))
+  return(df)
+}
+
+start_day = "20161201"
+end_day = "20200801"
+
+Subsidy_view = wiki_num_view("Subsidy",start_day,end_day)
+Coupon_view = wiki_num_view("Coupon",start_day,end_day)
+Unemployment_view = wiki_num_view("Unemployment",start_day,end_day)
+
+dataset1 =rbind(Subsidy_view,Coupon_view,Unemployment_view)
+
+dataset1
+
+write.table(dataset1,"dataset1.csv",row.names = FALSE,col.names = TRUE,sep=",")
+
+
+ggplot(data=dataset1,aes(timestamp,views))+geom_line(aes(color=article))
+```
+This dataset1 is collecting the daily trends in different Economically-related vocabulary view of Wikipedia over last four years, here I selected three word: "subsidy", "coupon" and "unemployment".
+
+In the graph we could see that the trend of the view volume of subsidy and 
+unemployment have a strong positive correlation, and because these words have certain negative sentiments, the view volume of these words will rise when the recession, with the trends of coupon was most pronounced, such as at the beginning of 2018 the U.S. stock market volatility, and at 2020 with the Covid-19,
+the view volume of "coupon" rose sharply.
+
+Some people think that the search volume of coupons may be an early indicator of the economic recession, which can be verified by this data set. Besides, we could measure the public's attention to different words, and estimate the public's expectation of the economic situation.
+
+
+2) Dataset2:
+```{r}
+
+qualityoflife_data <- function(city){
+  URL = "https://api.teleport.org/api/urban_areas/slug:"
+  parameters = paste(
+    city,"/scores/",
+    sep = "")
+  PATH = paste0(URL, parameters)
+  
+  ini = fromJSON(PATH)
+  ini = ini$categories
+    
+  len = length(ini$name)
+  
+  df = data.frame(matrix(ncol=1,nrow=len))
+  rownames(df) <- ini$name
+  colnames(df) <- c(city)
+  
+  df[1]= ini[c("score_out_of_10")]
+  return(df)
+}
+
+san_francisco=qualityoflife_data("san-francisco-bay-area")
+los_angeles=qualityoflife_data("los-angeles")
+seattle=qualityoflife_data("seattle")
+rome=qualityoflife_data("rome")
+beijing=qualityoflife_data("beijing")
+shanghai=qualityoflife_data("shanghai")
+toronto=qualityoflife_data("toronto")
+
+dataset2=cbind(san_francisco,los_angeles,seattle,rome,beijing,shanghai,toronto)
+dataset2
+
+write.table(dataset2,"dataset2.csv",col.names = TRUE,row.names = TRUE,sep=",")
+
+```
+
+This dataset2 compares the quality of life scores（out of 10) in various aspects of seven cities. It could be used to determine which city is more suitable for what kind of people. At the same time, if a person consider to choose a city to move to, he or she could use this dataset as a reference by weighting different indicators.
+

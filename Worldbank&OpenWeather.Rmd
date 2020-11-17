@@ -1,0 +1,108 @@
+---
+title: "441_HW1_Yuxi Ma_205638409"
+chunk_output_type: console
+editor_options: null
+output:
+  pdf_document:
+    toc: yes
+    latex_engine: xelatex
+  fig_caption: yes
+  highlight: haddock
+  df_print: paged
+  number_sections: yes
+  html_document:
+    df_print: paged
+    toc: yes
+fontsize: 10.5pt
+fontfamily: mathpazo
+arthur: Yuxi Ma
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+library(jsonlite)
+```
+
+1.  FRED API
+```{r}
+APIkey = "ce75183fdeabae23e953097caf281854"
+search_text = paste("interest","+","rate",sep = "")
+realtime_start = "2000-01-01"
+
+URL ="https://api.stlouisfed.org/fred/series/search"
+PATH = paste(URL, '?search_text=', search_text, '&api_key=',APIkey, "&file_type=json", "&realtime_start=", realtime_start,sep = "")
+
+initialquery = fromJSON(PATH)
+df = initialquery$seriess
+title = list()
+for (i in 1:length(df)){
+  title = as.data.frame(append(title, df[[i]][["title"]]))
+}
+popularity = list()
+for (i in 1:length(df)){
+  popularity = as.data.frame(append(popularity, df[[i]][["popularity"]]))
+}
+frequency = list()
+for (i in 1:length(df)){
+  frequency = as.data.frame(append(frequency, df[[i]][["frequency"]]))
+}
+unit = list()
+for (i in 1:length(df)){
+  unit = as.data.frame(append(unit, df[[i]][["units_short"]]))
+}
+final_data = cbind(t(title), t(unit), t(frequency), t(popularity))
+colnames(final_data) <- c("Title", "Unit", "Frequency", "Popularity")
+rownames(final_data) <- 1:nrow(final_data)
+
+setwd("/Users/mayuxi/R")
+write.csv(final_data,file = "FRED API Final Form")
+```
+In this dataset, it shows a collection of data related to interest rate, the unit of the data (mostly percent), the frequency of the data, and the respect popularity of that dataset. By observing this, we can examing what the public focus more about the interest rate (by popularity), also have a very basic understanding of that data.
+
+
+2.  API
+```{r}
+#Worldbank API
+URL1 = "http://api.worldbank.org/v2/country"
+PATH1 = paste(URL1, "?format=json", sep = "")
+initialquery1 = jsonlite::fromJSON(PATH1)
+df = initialquery1[[2]]
+final_data1 = data.frame(df$name, df$region$value, df$incomeLevel$value, df$capitalCity, df$longitude, df$latitude)
+colnames(final_data1) <- c("Country", "Region", "Income Level", "Capital", "Longitude", "Latitude")
+final_data1 = subset(final_data1, final_data1$Capital != "")
+
+
+#OpenWeather API
+APIKey = "3b4d72347f566189531be90cde30af4f"
+URL = "http://api.openweathermap.org/data/2.5/weather"
+
+PATH = list()
+initialquery = list()
+
+for (i in 1:length(final_data1$Longitude)){
+  PATH2 = paste(URL, "?lat=", final_data1$Latitude[i], "&lon=", final_data1$Longitude[i], "&appid=", APIKey, sep = "")
+  PATH = append(PATH, PATH2)
+}
+for (i in PATH){
+  initialquery2 = jsonlite::fromJSON(as.character(i))
+  initialquery = append(initialquery, initialquery2$main$temp)  
+}
+
+initialquery = as.data.frame(initialquery)
+final_data1 = cbind(final_data1, t(initialquery))
+
+colnames(final_data1)[7] = "Temperature"
+
+write.csv(final_data1,file = "Income & weather condition analysis")
+
+```
+Here, I combined the WorldBank API and OpenWeather API, in the former, different cities with their regions and income level are listed, while in the latter, I append it with the average temperature in that city. I guess there are two possible perspectives for analysis:
+
+1> The possible relationship between the temperature and that city's overall income level. Assuming appropriate temperature helps a lot with agriculture, which to some extent will influence the income level there.
+
+2> Categorize them under different regions, and do a region level analysis applying the same logic above.
+
+Cons: As most of the rainfall data in OpenWeather is null, so I find it difficult to include it here, but it's more like a complete toolkit to describe weather condition if rainfall values can be appended in my final dataset.

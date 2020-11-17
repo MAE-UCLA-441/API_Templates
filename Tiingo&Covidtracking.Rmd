@@ -1,0 +1,84 @@
+---
+title: "API Data"
+author: ''
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(jsonlite)
+library(httr)
+library(dplyr)
+library(tidyverse)
+
+rm(list=ls())
+```
+
+## Historical Stock Prices
+
+Using the free API from Tiingo, we can get historical opening and closing stock prices. The following code allows us to specify a list of tickers and range of dates to include. Combined with other historical data about market events, we can look for a relationship between stock prices and other events. Alternatively, we can observe how stock prices fluctuate in relation to each other. For example, we may think that tech stocks are strongly correlated with each other.
+
+```{r}
+
+tiingokey = '&token=3f2c94e5cf204677e7802e5642755b61a2bdcf6c'
+daily <- 'https://api.tiingo.com/tiingo/daily/'
+tickers <- c('AAPL', 'AMZN', 'AMD', 'DIS', 'ATVI')
+priceTime <- '/prices?startDate=2012-1-1&endDate=2020-1-1&columns=open,close'
+
+#Run an initial query with one ticker to get the range of dates and use them as rownames
+URL = paste0(daily, tickers[1], priceTime, tiingokey)
+query = read_json(URL)
+
+dates <- sapply(query, "[", 1)
+data <- data.frame(row.names = dates)
+
+stockprices <- function(tickers, df) {
+  for (t in tickers) {
+    URL = paste0(daily, t, priceTime, tiingokey)
+    query = read_json(URL)
+    open <- unlist(sapply(query, "[", 2), use.names = FALSE)
+    close <- unlist(sapply(query, "[", 3), use.names = FALSE)
+    
+    openname <- paste0(t, "open")
+    closename <- paste0(t, 'close')
+      
+    df[openname] <- open
+    df[closename] <- close
+  }
+  return(df)
+}
+
+data <- stockprices(tickers, data)
+print(head(data))
+write.csv(data, paste0(getwd(), '/stockprices.csv'), row.names = TRUE)
+```
+
+## COVID Data for the United States
+
+Daily historical COVID data for the United States. Used in conjunction with another dataset (e.g. the previous one on stock prices) we could see if trends in COVID such as reported cases, hospitalizations, or deaths correlate with other trends, such as stock prices or video game purchases.
+```{r}
+
+base = 'https://api.covidtracking.com'
+endpoint = '/v1/us/daily.json'
+URL = paste0(base, endpoint)
+initialquery = read_json(URL)
+
+
+vars <- c('date', 'death', 'deathIncrease', 
+          'hospitalizedCumulative', 'hospitalizedCurrently', 
+          'hospitalizedIncrease', 'inIcuCumulative', 'inIcuCurrently', 
+          'totalTestResults')
+
+d <- initialquery %>%
+        #replace all null values in each nested list with NAs, 
+        #or else dataframe construction fails
+        map(function(x) map(x, function(y) ifelse(is.null(y), NA, y))) %>%
+        map(as.data.frame) %>%
+        bind_rows() %>%
+        select(all_of(vars))
+
+print(head(d))
+write.csv(d, paste0(getwd(), '/covidUS.csv'), row.names = FALSE)
+
+```

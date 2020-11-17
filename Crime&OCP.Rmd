@@ -1,0 +1,108 @@
+---
+title: ""
+author: ""
+date: "2020/10/21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+1. This dataset contains the total amount of crime in California by year from 1979 and the unemployment rate in CA during the same period. It could be used to measure to what extent dose the unemployment rate influence the crime rate in California.
+```{r}
+#for crime data
+apikey_cde="wMOccIpuR9akoqRv3Gmgqhf0PO7vd44kOSat1Bfj"
+from=1979
+to=2019
+stat_abbr="CA"
+CDE_crime=function(apikey,from,to,stat_abbr){
+  URL="https://api.usa.gov/crime/fbi/sapi/api/arson/states"
+  PATH=paste0(URL,"/",stat_abbr,"/",from,"/",to,"?API_KEY=",apikey)
+  initialqury=jsonlite::fromJSON(PATH)
+  df=initialqury$results
+  df=df[c("reported")]
+  return(df)
+}
+#for unemployment rate:
+apikey_fred="54b39d1f56f337fef917b0b1592874cc"
+series_id="CAUR"
+observation_start="1979-01-01"
+observation_end="2019-01-01"
+frequency="a"
+fred_series=function(APIkey,series_id,observation_start,
+                     observation_end,frequency){
+  URL="https://api.stlouisfed.org/fred/series/observations"
+  parameters=paste0(
+    "?series_id=",series_id,
+    "&api_key=",APIkey,
+    "&observation_start=",observation_start, 
+    "&observation_end=",observation_end,
+    "&frequency=",frequency,
+    "&file_type=json"
+  )
+  PATH=paste0(URL,parameters)
+  initialqury=jsonlite::fromJSON(PATH)
+  df=initialqury$observations
+  df=df[c("value")]
+  df$value=as.numeric(df$value)
+  return(df)
+}
+crime=CDE_crime(apikey_cde,from,to,stat_abbr)
+unem=fred_series(apikey_fred,series_id,observation_start,
+                     observation_end,frequency)
+years=1979:2019
+dataset1=cbind(years,crime,unem)
+colnames(dataset1)=c("year","crime","unemployment_rate")
+write.table(dataset1,file="Dataset1.csv",sep = ",",row.names=FALSE)
+```
+
+2. This dataset contains manufactures and service exports of United Kingdom to the wolrd from 2005 to 2018. It can be used to intuitively estimate the impact of Brexit on UK's export and its trend through time.
+```{r}
+headers = c('Ocp-Apim-Subscription-Key' = "e14bb852a6214d7e8862b7f255b70c14") 
+i1='ITS_MTV_AX'
+pc1='MA'
+i2='ITS_CS_AX6'
+pc2='S'
+wto_data=function(i,pc){
+  params = list()
+  params['i'] = i
+  params['r'] = '826'
+  params['p'] = '000'
+  params['ps'] = '2005-2018'
+  params['pc'] = pc
+  params['spc'] = 'false'
+  params['fmt'] = 'json'
+  params['mode'] = 'full'
+  params['dec'] = 'default'
+  params['off'] = '0'
+  params['max'] = '500'
+  params['head'] = 'H'
+  params['lang'] = '1'
+  params['meta'] = 'false'
+  
+  PATH = paste0("https://api.wto.org/timeseries/v1/data?"
+                     , paste0(names(params),'=',params,collapse = "&")) 
+  resp <- httr::GET(PATH,
+                     add_headers(headers)) 
+  
+  if(!http_error(resp)){ #Checks for an http error
+    jsonRespText<-jsonlite::fromJSON(rawToChar(content(resp,encoding = 'UTF-8')))$Dataset # Converts the UTF-8 file into JSON
+    jsonRespText
+  }else{
+    stop('Error in Response')
+  }
+  ord_json=jsonRespText[order(jsonRespText$Year),]
+  df=ord_json[c("Value")]
+  return(df)
+}
+goods_ex=wto_data(i1,pc1)
+serv_ex=wto_data(i2,pc2)
+year=2005:2018
+Dataset2=cbind(year,goods_ex,serv_ex)
+colnames(Dataset2)=c("years","good_ex","serv_ex")
+write.table(Dataset2,file="Dataset2.csv",sep = ",",row.names=FALSE)
+```
+

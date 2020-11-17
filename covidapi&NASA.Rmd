@@ -1,0 +1,85 @@
+---
+title: "Econ 441A API Homework"
+author: ""
+date: "10/21/2020"
+output: pdf_document
+---
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#Import Package
+library(jsonlite)
+```
+
+##############
+# I. Asteroid Close Encounter Dataset
+##############
+This dataset includes the asteroids that came within 0.001 astronomical units of earth in the past year and the dates of these occurrences.  
+It can be used to check how often our planet has close encounters with asteroids.
+
+```{r, warning=FALSE, message=FALSE}
+#Create a variable for the URL for NASA close encounters.
+NASAURL = paste("https://ssd-api.jpl.nasa.gov/cad.api")
+
+#Specify data for just asteroids that came very close (within 0.001 astronomical units) to earth in the past year.
+NASAparameters = "?kind=a&date-min=2019-10-21&date-max=2020-10-21&dist-max=0.001"
+
+#Generate path with url and parameters.
+NASAPath = paste(NASAURL, NASAparameters, sep = "")
+
+#Get info about asteroids that came close to earth in the past year.
+NASAquery = jsonlite::fromJSON(NASAPath)
+NASAdata = NASAquery$data
+NASAdata
+```
+```{r, warning=FALSE, message=FALSE}
+#Now create a dataframe of the asteroids' names and the dates we had close encounters with them.
+names = NASAdata[,1]
+
+dates = NASAdata[,4]
+
+Dataset1 = data.frame (
+  Asteroid = names,
+  Date = dates
+)
+
+#Change the format of the dates & times to YYYY-MM-DD.
+Dataset1$Date = substr(Dataset1$Date,1,11)
+Dataset1$Date = as.Date(Dataset1$Date, format = "%Y-%b-%d")
+
+Dataset1
+
+#Export the dataset to a csv.
+write.csv(Dataset1,"Asteroids.csv", row.names = TRUE)
+```
+
+##############
+# II. Covid-19 Cases and Deaths by Country Dataset
+##############
+This dataset includes the total number of Covid-19 cases and deaths experiences by every world nation.   
+It can be used to check which countries have been the most affected by the pandemic.
+
+```{r, warning=FALSE, message=FALSE}
+#Call data from the worldwide Covid-19 case API.
+CovidURL = paste("https://api.covid19api.com/summary")
+Covidquery = jsonlite::fromJSON(CovidURL)
+
+Covidquery
+```
+
+```{r, warning=FALSE, message=FALSE}
+#Create a dataframe of countries, their total cases and deaths using the Covid-19 API data.
+Dataset2 = data.frame (
+  Country = Covidquery$Countries$Country,
+  Confirmed_Cases = Covidquery$Countries$TotalConfirmed,
+  Total_Deaths = Covidquery$Countries$TotalDeaths
+)
+
+Dataset2
+
+#Export the dataset to a csv.
+write.csv(Dataset2,"CovidCases.csv", row.names = TRUE)
+```
